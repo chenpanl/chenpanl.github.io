@@ -14,10 +14,6 @@ HERE = pathlib.Path(__file__).parent
 DESCRIPTION = ("Language models fail on compositions of tasks they solve alone, because they cut "
                "every task's thinking by the same factor. Fragility-aware batching saves 43% of "
                "tokens at unchanged accuracy.")
-FAVICON = ("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'>"
-           "<rect width='16' height='16' rx='3' fill='%231A1A1A'/>"
-           "<text x='8' y='12.5' font-size='12' font-weight='700' text-anchor='middle' "
-           "font-family='monospace' fill='%23E6B33D'>%23</text></svg>")
 
 src = (HERE / "src/page.html").read_text()
 data = json.dumps(json.loads((HERE / "data/figures.json").read_text()), separators=(",", ":"))
@@ -34,7 +30,7 @@ head, body = page.split("<!--BODY-->")
 <meta property="og:title" content="On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta name="twitter:card" content="summary">
-<link rel="icon" href="{FAVICON}">
+<link rel="icon" type="image/svg+xml" href="assets/broken_glass.svg">
 {head}</head>
 <body>
 {body}</body>
