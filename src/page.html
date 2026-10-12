@@ -1,0 +1,954 @@
+<title>When Tasks Compete for Tokens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* One 680px monospace column read like a rendered markdown file; colour only where it means something. */
+:root {
+  --bg: #FBFAF7; --fg: #1A1A1A; --muted: #707070; --deco: #8A8A8A; --faint: #DCD9D2; --wash: #F1EFE9; --box: #D3D0C8;
+  --red: #C8413F; --yellow: #E6B33D; --blue: #2F6FB0;
+  --code: #F3F1EC; --syn-red: #B5544F; --syn-yellow: #9A7A2E; --syn-blue: #3F6F9E;
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111111; --fg: #E6E6E6; --muted: #8A8A8A; --deco: #8A8A8A; --deco: #8A8A8A; --faint: #2C2C2C; --wash: #1A1A1A; --box: #3B3B3B;
+    --red: #E2625F; --yellow: #F1C557; --blue: #5B96D8; --code: #191919; --syn-red: #D37571; --syn-yellow: #D9B35E; --syn-blue: #7FA6CF; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111111; --fg: #E6E6E6; --muted: #8A8A8A; --deco: #8A8A8A; --faint: #2C2C2C; --wash: #1A1A1A; --box: #3B3B3B;
+  --red: #E2625F; --yellow: #F1C557; --blue: #5B96D8; --code: #191919; --syn-red: #D37571; --syn-yellow: #D9B35E; --syn-blue: #7FA6CF; color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--mono); -webkit-font-smoothing: antialiased; --lh: 24px; }
+::selection { background: var(--yellow); color: #1A1A1A; }
+.col { position: relative; max-width: 680px; margin: 0 auto; padding-inline: 16px; padding-block: 64px 80px; box-sizing: content-box; }
+p { margin: 0 0 calc(var(--lh) * 0.66); }
+b, strong { font-weight: 700; }
+em { font-style: italic; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px dashed var(--fg); outline-offset: 3px; }
+.l::before { content: "["; color: var(--deco); }
+.l::after { content: "]"; color: var(--deco); }
+.l:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.m { color: var(--deco); font-weight: 400; }
+code { font: inherit; background: var(--wash); padding: 0 3px; }
+sup { font-size: 0.68em; line-height: 0; }
+
+/* header */
+h1 { font-size: 24px; line-height: 1.4; font-weight: 700; margin: 0 0 20px; text-wrap: balance; }
+.authors { margin: 0 0 2px; }
+.affil { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 22px; }
+.links .l { padding: 1px 2px; transition: background .15s, color .15s; }
+.links .l:hover { background: var(--fg); color: var(--bg); text-decoration: none; }
+.links .l:hover::before, .links .l:hover::after { color: var(--bg); }
+.lede { margin: 0 0 28px; padding: 14px 18px; border-radius: 8px;
+  background: color-mix(in srgb, var(--blue) 9%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--bg)); }
+.rule { overflow: hidden; white-space: nowrap; color: var(--muted); opacity: .55; line-height: 1; margin: calc(var(--lh) * 2.5) 0 0; user-select: none; }
+.rule + section { margin-top: calc(var(--lh) * 2.5); }
+.rule::before { content: "────────────────────────────────────────────────────────────────────────────────────────────────────"; }
+
+h2 { font-size: 16px; line-height: 1.45; font-weight: 700; margin: 0 0 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-wrap: balance; }
+h2 > span:first-child { padding-left: 6ch; text-indent: -6ch; }
+h2 .up { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+h2 .up:hover { color: var(--fg); }
+@media (hover: hover) { h2 .up { opacity: 0; transition: opacity .15s; } h2:hover .up, h2 .up:focus-visible { opacity: 1; } }
+.index { font-size: 13px; color: var(--muted); }
+.index h2 { font-size: 13px; margin-bottom: 6px; }
+.index a:hover { color: var(--fg); }
+.index ol { list-style: none; padding: 0; margin: 0; counter-reset: i; }
+.index li { counter-increment: i; }
+.index li::before { content: counter(i) ". "; color: var(--muted); }
+section { margin-top: calc(var(--lh) * 4.5); scroll-margin-top: 28px; }
+section[data-sec] > h2 { font-size: 19px; line-height: 1.4; margin-bottom: 20px; }
+
+/* markdown-ish devices */
+blockquote { position: relative; margin: 22px 0; padding-left: 2.2ch; }
+blockquote::before { content: ">"; position: absolute; left: 0; top: 0; color: var(--deco); }
+blockquote::after { content: ""; position: absolute; left: 0.3ch; top: 1.7em; bottom: 0.3em; border-left: 1px solid var(--faint); }
+.key { border-left: 2px solid var(--fg); padding-left: 2ch; margin-block: var(--lh); }
+.hl { background: var(--yellow); color: #1A1A1A; padding: 0 0.25ch; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hi, .lo { font-weight: 700; cursor: default; }
+.hi { color: var(--red); }
+.lo { color: var(--blue); }
+.bulb { display: inline-block; vertical-align: -2px; margin-right: 2px; }
+.bulb-glass { fill: var(--yellow); stroke: var(--fg); stroke-width: 1.2; stroke-linejoin: round; }
+.bulb-base { fill: none; stroke: var(--fg); stroke-width: 1.2; stroke-linecap: round; }
+.tok { background: color-mix(in srgb, var(--yellow) 32%, transparent); padding: 0 0.3ch; }
+.fn { color: var(--fg); font-size: 0.7em; vertical-align: super; line-height: 0; padding-left: 1px; }
+
+/* margin notes: in the right margin on wide screens, under their paragraph otherwise */
+.sn { font-size: 12px; line-height: 1.55; color: var(--muted); margin: -6px 0 14px; padding-left: 2.2ch; position: relative; }
+.sn > sup:first-child { position: absolute; left: 0; top: 0.75em; color: var(--fg); }
+.sn b { color: var(--fg); }
+.sn, .fn { transition: color .15s; }
+.sn.lit { color: var(--fg); }
+.fn.lit { background: color-mix(in srgb, var(--yellow) 32%, transparent); }
+@media (min-width: 1200px) {
+  .sn { position: absolute; left: calc(100% + 40px); width: 200px; margin: 0; opacity: .55; transition: opacity .15s, color .15s; }
+  .sn.lit, .sn:hover { opacity: 1; }
+}
+
+/* section rail */
+.rail { opacity: 0; pointer-events: none; transition: opacity .25s; }
+.rail.live { opacity: 1; pointer-events: auto; }
+.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 340px - 52px); height: min(300px, 48vh); flex-direction: column; gap: 8px; z-index: 2; }
+@media (min-width: 1200px) { .rail { display: flex; } }
+.rail a { flex: 1; position: relative; width: 22px; }
+.rail i { position: absolute; top: 0; bottom: 0; left: 10px; width: 1px; background: var(--faint); transition: width .18s ease-out, left .18s ease-out, background .18s ease-out; }
+.rail a:hover i { width: 2px; left: 9.5px; background: var(--muted); }
+.rail a.on i { width: 3px; left: 9px; background: var(--fg); }
+.rail a.on:hover i { width: 4px; left: 8.5px; }
+.rail span { position: absolute; right: 30px; top: -2px; width: 180px; text-align: right; font-size: 11px; line-height: 1.45; color: var(--deco); transition: color .18s; }
+.rail span b { display: block; font-weight: 400; color: var(--muted); }
+.rail a:hover span, .rail a.on span { color: var(--fg); }
+
+/* figures */
+figure { margin: var(--lh) 0 0; }
+.frame { position: relative; border: 1px solid var(--faint); border-radius: 6px; padding: 18px 18px 34px; }
+.replay { position: absolute; right: 8px; bottom: 6px; font: 12px var(--mono); color: var(--muted); background: none; border: 0; padding: 2px 4px; cursor: pointer; }
+.replay:hover { color: var(--fg); }
+figcaption { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 10px; }
+figcaption .fl { color: var(--fg); }
+.flags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 18px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.flags label { white-space: nowrap; }
+.flags select { appearance: none; -webkit-appearance: none; background: transparent; border: 0; border-bottom: 1px solid transparent; border-radius: 0; color: var(--fg); font: inherit; padding: 0 1px; cursor: pointer; }
+.flags select:hover { border-bottom-color: currentColor; }
+.flags option { background: var(--bg); color: var(--fg); }
+.note { font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12px; color: var(--muted); }
+.fighead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 20px; margin-bottom: 8px; }
+.fighead .flags { margin: 0; }
+.legend i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -0.5px; }
+.sw-high { background: var(--red); } .sw-medium { background: var(--yellow); } .sw-low { background: var(--blue); }
+
+/* fig 1: terminal */
+.term { font-size: 14px; line-height: 1.75; }
+.term .ln { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term .pr { color: var(--muted); }
+.term .res i { font-style: normal; display: inline-block; }
+.term .gap { height: 0.85em; }
+.term .ig { display: inline-block; }
+.ok { color: var(--blue); font-weight: 700; }
+.bad { color: var(--red); font-weight: 700; }
+.term .cm { color: var(--muted); }
+
+/* charts */
+.plot { position: relative; }
+.plot svg { display: block; overflow: visible; }
+.plot .grid { stroke: var(--faint); stroke-width: 1; }
+.plot .ax, .plot .tick { stroke: var(--muted); stroke-width: 1; }
+.plot .tk, .plot .al { fill: var(--muted); font: 11px var(--mono); }
+.plot .lab { fill: var(--fg); font: 11px var(--mono); }
+.plot .one { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 4; stroke-linecap: round; }
+.plot .zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.s-high { stroke: var(--red); } .s-medium { stroke: var(--yellow); } .s-low { stroke: var(--blue); }
+.p-high { fill: var(--red); } .p-medium { fill: var(--yellow); } .p-low { fill: var(--blue); }
+.plot .fit, .plot .path { fill: none; stroke-width: 2; stroke-linecap: round; }
+.plot .path { stroke-width: 1.5; }
+.plot .pt { stroke: var(--bg); stroke-width: 1.5; }
+.plot .pt0 { fill: var(--fg); stroke: var(--bg); stroke-width: 1.5; }
+.tip { position: absolute; pointer-events: none; font-size: 11px; line-height: 1.4; background: var(--bg); border: 1px solid var(--faint); padding: 2px 7px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.readout { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 1.6em; }
+.readout b { color: var(--fg); }
+
+/* fig 3 */
+.bars .bar { fill: var(--box); }
+.bars .ghost { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.bars .need { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.bars .slack { fill: var(--blue); }
+.bars .deficit { fill: var(--red); }
+.bars .rowlab { fill: var(--fg); font: 12px var(--mono); }
+.bars .hint { fill: var(--muted); font: 11px var(--mono); }
+.bars .mk-ok { fill: var(--blue); font: 700 14px var(--mono); }
+.bars .mk-bad { fill: var(--red); font: 700 14px var(--mono); }
+.comment { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* fig 4 */
+.switch { display: flex; gap: 10px; justify-content: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.switch button { font: inherit; color: var(--muted); background: none; border: 0; padding: 0 0 2px; cursor: pointer; border-bottom: 1px solid transparent; }
+.switch button.on { color: var(--fg); border-bottom-color: var(--fg); }
+.switch button:hover { color: var(--fg); }
+.stage { position: relative; height: 116px; }
+.stage .status { position: absolute; left: 0; top: 0; font-size: 12px; color: var(--muted); }
+.stage .scan { position: absolute; top: 40px; height: 56px; width: 1.5px; background: var(--fg); opacity: 0; }
+.b4 { position: absolute; top: 50px; height: 36px; }
+.b4 .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--box); overflow: hidden; }
+.b4 .tint { position: absolute; inset: 0; opacity: 0; }
+.b4 .tint.r { background: var(--red); } .b4 .tint.b { background: var(--blue); }
+.b4 .ghost { position: absolute; inset: 0; border: 1px dashed var(--muted); opacity: 0; box-sizing: border-box; }
+.mk4 { position: absolute; top: 25px; width: 24px; margin-left: -12px; text-align: center; font-size: 14px; line-height: 20px; font-weight: 700; }
+.mk4.neutral { color: var(--fg); font-weight: 400; }
+.lb4 { position: absolute; top: 94px; width: 32px; margin-left: -16px; text-align: center; font-size: 12px; color: var(--muted); }
+.brk { position: absolute; top: 44px; height: 48px; color: var(--muted); opacity: 0;
+  background:
+    linear-gradient(currentColor, currentColor) left top / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) left top / 1.5px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 1.5px 100% no-repeat; }
+.counter { font-size: 13px; margin-top: 12px; display: flex; gap: 22px; flex-wrap: wrap; }
+.counter .tokdot { display: inline-block; width: 8px; height: 8px; background: var(--yellow); margin-right: 7px; vertical-align: 0; }
+
+/* details and table */
+details { margin-top: 14px; }
+summary { list-style: none; cursor: pointer; font-size: 13px; color: var(--muted); width: fit-content; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸ "; }
+details[open] > summary::before { content: "▾ "; }
+summary:hover { color: var(--fg); }
+details > .inner { margin-top: 12px; }
+.tablebox { overflow-x: auto; border: 1px solid var(--faint); border-radius: 6px; margin-top: 6px;
+  background:
+    linear-gradient(to right, var(--bg) 40%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 40%, transparent) right / 28px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--fg) 14%, transparent), transparent) left / 12px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--fg) 14%, transparent), transparent) right / 12px 100% no-repeat scroll; }
+.scrollhint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+table { border-collapse: collapse; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; white-space: nowrap; width: 100%; }
+th, td { padding: 4px 10px; text-align: left; }
+thead th { font-weight: 400; color: var(--muted); border-bottom: 1px solid var(--faint); }
+thead tr:first-child th { padding-top: 8px; }
+td small { font-size: 11px; color: var(--muted); }
+td.neg, td.neg small { color: var(--red); }
+tr.avg td { font-weight: 700; border-top: 1px solid var(--faint); }
+tr.grey td, tr.grey td small { color: var(--muted); }
+td.sep, th.sep { border-left: 1px solid var(--faint); }
+.tnotes { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* closing and footer */
+.closing { margin-top: calc(var(--lh) * 2); }
+pre.bib { position: relative; margin: 0; font: 12.5px/1.65 var(--mono); color: var(--fg); background: var(--code); border: 1px solid var(--faint); border-radius: 6px; padding: 16px 18px; overflow-x: auto; }
+.sy-r { color: var(--syn-red); } .sy-y { color: var(--syn-yellow); } .sy-b { color: var(--syn-blue); }
+@media (max-width: 520px) { pre.bib { padding-top: 32px; } }
+.copy { position: absolute; top: 8px; right: 10px; font: 12px var(--mono); color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 4px; }
+.copy:hover { color: var(--fg); }
+.foot { font-size: 12px; line-height: 1.6; color: var(--muted); margin-top: var(--lh); }
+.foot p { margin: 0 0 8px; }
+
+/* hovering a coloured keyword picks out the matching marks in every figure */
+[data-g] { transition: opacity .2s ease-out; }
+body[data-focus="high"] [data-g]:not([data-g="high"]),
+body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; }
+
+@media (max-width: 520px) {
+  .col { padding-block: 40px 64px; }
+  .frame { padding: 14px 12px 32px; }
+  .term { font-size: 12px; }
+  h2 { flex-wrap: wrap; gap: 4px 16px; }
+  section[data-sec] > h2 { margin-bottom: 12px; }
+  h2 .up { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-g], .rail i, .rail span { transition: none; }
+}
+@media print {
+  .rail, .replay, .copy, .flags, .switch { display: none !important; }
+  .frame { break-inside: avoid; }
+}
+</style>
+<!--BODY-->
+<nav class="rail" aria-label="Sections">
+  <a href="#s1" data-s="s1"><i></i><span><b>1</b>What is compositional degradation?</span></a>
+  <a href="#s2" data-s="s2"><i></i><span><b>2</b>What does implicit budgeting look like?</span></a>
+  <a href="#s3" data-s="s3"><i></i><span><b>3</b>What tasks fail under composition?</span></a>
+  <a href="#s4" data-s="s4"><i></i><span><b>4</b>Exploiting implicit budgeting for efficient inference</span></a>
+</nav>
+
+<main class="col" id="top">
+  <header>
+    <h1><span class="m">#</span> On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models</h1>
+    <p class="authors">Chenpan Li<sup>1*</sup>, Thies Brockmöller<sup>1</sup>, Stefanie Jegelka<sup>1,2</sup>, Sharut Gupta<sup>2◇</sup>, Nikolaos Karalias<sup>2◇</sup></p>
+    <p class="affil"><sup>1</sup> Technical University of Munich · <sup>2</sup> MIT · * correspondence · ◇ equal advisory roles</p>
+    <nav class="links" aria-label="Paper links">
+      <a class="l todo" href="#">paper</a>
+      <a class="l todo" href="#">arXiv</a>
+      <a class="l todo" href="#">code</a>
+      <a class="l todo" href="#">data</a>
+      <a class="l" href="#cite">bibtex</a>
+    </nav>
+    <p class="lede">When a prompt combines many tasks, language models often think too little about the difficult ones and fail. Our work shows the cause is <mark class="hl">insufficient reasoning effort</mark>, not missing skills.</p>
+
+    <div class="index" id="index">
+      <h2><span><span class="m">##</span> index</span></h2>
+      <ol>
+        <li><a class="l" href="#s1">the contradiction</a></li>
+        <li><a class="l" href="#s2">every task gets less thinking</a></li>
+        <li><a class="l" href="#s3">fragile tasks</a></li>
+        <li><a class="l" href="#s4">batching by fragility</a></li>
+        <li><a class="l" href="#cite">cite</a></li>
+      </ol>
+    </div>
+  </header>
+  <div class="rule" aria-hidden="true"></div>
+
+  <!-- 1 -->
+  <section id="s1" data-sec>
+    <h2><span><span class="m">##</span> 1&nbsp; composing tasks causes performance degradation</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>A <em>composition</em> is built from several independent constituent tasks, which are pasted into one prompt and answered in order. We keep only tasks a model solves in 3 out of 3 isolated attempts, then compose them. Even for these reliably solved tasks, an accuracy drop shows up for all tested models across math and language datasets.<span class="fn" data-fn="1">1</span><span class="fn">,</span><span class="fn" data-fn="2">2</span></p>
+    <aside class="sn" data-for="1"><sup>1</sup>It is not error accumulation. If composition had no effect, we would expect the accuracy drop to be close to 0.</aside>
+    <aside class="sn" data-for="2"><sup>2</sup>Nor is it context length. Most responses use under 25% of the context window, and in most datasets fewer than 1% hit the limit.</aside>
+
+    <figure id="fig1">
+      <div class="frame" aria-label="Animated terminal. Three integrals, 3x squared, 2 sin(4x+1) and x e to the 2x, are each solved in 3 of 3 attempts alone. Merged into one integral of their sum, terms 1 and 2 are solved and term 3 fails.">
+        <div class="term" id="term">
+          <div class="ln" data-l="0"><span class="pr">$</span> solve "∫ 3x² dx"             <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="ln" data-l="1"><span class="pr">$</span> solve "∫ 2·sin(4x+1) dx"     <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="ln" data-l="2"><span class="pr">$</span> solve "∫ x·e^(2x) dx"         <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="gap"></div>
+          <div class="ln merged"><span class="pr">$</span> solve "∫ <span class="ig">3x²</span><span class="pl"> + </span><span class="ig">2·sin(4x+1)</span><span class="pl"> + </span><span class="ig">x·e^(2x)</span> dx"</div>
+          <div class="ln think m">thinking <span class="dots">···</span></div>
+          <div class="ln out"><span class="o">term 1 <span class="ok">✓</span></span>   <span class="o">term 2 <span class="ok">✓</span></span>   <span class="o">term 3 <span class="bad">✗</span></span></div>
+          <div class="ln cm"># each term: 3/3 separately. in composition: 2/3.
+<span class="bad" style="font-weight:400"># why is that?</span></div>
+        </div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 1 ─</span> Each integral is solved in 3 of 3 attempts alone, but composing them (i.e. summing them) causes failures.</figcaption>
+    </figure>
+
+    <blockquote>If a model can solve every constituent task alone, why does it fail a composition of them, and what mechanism drives it?</blockquote>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2" data-sec>
+    <h2><span><span class="m">##</span> 2&nbsp; degradation as a misallocation of the implicit thinking budget</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>To observe how thinking tokens are distributed, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) measures how much of the thinking tokens used in isolation remains when the task is placed in a composition of k tasks.</p>
+    <p>It falls as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. In plain terms, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
+    <p class="key">Under composition, LLMs cut the thinking tokens of every task by roughly the same proportion, a factor of k<sup>m</sup>.<span class="fn" data-fn="3">3</span></p>
+    <aside class="sn" data-for="3"><sup>3</sup>The model does this voluntarily. The prompt sets no per-task limit and the context window is far from full, so the model rations on its own.</aside>
+
+    <figure id="fig2">
+      <div class="frame" aria-label="Log-log chart of token ratio against tasks per composition. For every model and dataset the three length bins fall along straight lines through (1, 1), the power law r approximately k to the m.">
+        <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>--dataset [<select id="f2-dataset" data-flag="dataset"></select> ▾]</label><label>--model [<select id="f2-model" data-flag="model"></select> ▾]</label></div></div>
+        <div class="plot" id="pplot"><svg role="img" aria-label="Token ratio by composition size"></svg><div class="tip" hidden></div></div>
+        <div class="readout" id="preadout"></div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 2 ─</span> Thinking per task relative to solving it alone. Lines bin tasks by the thinking tokens they use in isolation (red long, yellow medium, blue short). Line: fitted k<sup>m</sup>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3" data-sec>
+    <h2><span><span class="m">##</span> 3&nbsp; some tasks can afford it, some can't</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>The same reduction causes highly uneven degradation. <span class="hi" data-focus="high">High-effort</span> tasks, the ones with long thinking traces alone, lose the most accuracy.<span class="fn" data-fn="4">4</span> We call these tasks <span class="hi" data-focus="high">fragile</span>, whereas tasks that are robust to this reduction we call <span class="lo" data-focus="low">non-fragile</span>, since they show almost no degradation.<span class="fn" data-fn="5">5</span><span class="fn">,</span><span class="fn" data-fn="6">6</span></p>
+    <aside class="sn" data-for="4"><sup>4</sup>An analogous effect arises when a solo task is forced to stop thinking at its composed budget.</aside>
+    <aside class="sn" data-for="5"><sup>5</sup>Q: Why is the degradation so uneven? A: Short traces carry slack, more thinking than the task needs. High-effort tasks are more vulnerable because they actually need that many thinking tokens to be solved.</aside>
+    <aside class="sn" data-for="6"><sup>6</sup>Fragility is a stable property of a task for a given model: the same tasks fail across composition sizes and orderings (correlation <b>0.81</b>), whereas different models break on different tasks (<b>0.24</b>).</aside>
+    <p class="key">Modern LLMs mostly solve difficult tasks in isolation without trouble. Given a composition, however, they fail to assign each task the thinking budget it needs, so the most difficult constituent tasks fail first.</p>
+
+    <figure id="fig3">
+      <div class="frame" aria-label="Three bars show the thinking each integral gets alone, with a dashed tick for the thinking it needs. All bars shrink by the same factor. Terms 1 and 2 still clear their ticks; term 3 falls short and fails.">
+        <div class="plot bars" id="bplot"><svg role="img" aria-label="Same cut, different slack"></svg></div>
+        <div class="comment" id="bcomment"># <span class="hi" data-focus="high" style="font-weight:400">high-effort</span> tasks fail earlier under composition</div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 3 ─</span> Same cut, different slack. Every trace shrinks by the same factor k<sup>m</sup>, and only term 3 drops below the thinking it needs.</figcaption>
+    </figure>
+
+    <details id="evidence">
+      <summary>the evidence: accuracy drop vs token reduction (paper fig. 5)</summary>
+      <div class="inner">
+        <figure style="margin:0">
+          <div class="frame" style="padding-bottom:18px" aria-label="Accuracy change against token reduction per length bin. Long-thinking tasks lose the most accuracy as the reduction grows.">
+            <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>--dataset [<select id="f5-dataset" data-flag="dataset"></select> ▾]</label><label>--model [<select id="f5-model" data-flag="model"></select> ▾]</label></div></div>
+            <div class="plot" id="eplot"><svg role="img" aria-label="Accuracy change against token reduction"></svg><div class="tip" hidden></div></div>
+          </div>
+          <figcaption><span class="fl">fig. 3b ─</span> Accuracy change of tasks solved 3 of 3 times alone, against the share of thinking that composition removed. Each point is one composition size k; bins as in fig. 2.</figcaption>
+        </figure>
+      </div>
+    </details>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4" data-sec>
+    <h2><span><span class="m">##</span> 4&nbsp; exploiting implicit budgeting for efficient inference</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p><svg class="bulb" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5a4.6 4.6 0 0 0-2.7 8.3c.5.4.8 1 .8 1.6v.6h3.8v-.6c0-.6.3-1.2.8-1.6A4.6 4.6 0 0 0 8 1.5z" class="bulb-glass"/><path d="M6.2 13.6h3.6M6.7 15h2.6" class="bulb-base"/></svg> <b>Fragility-aware batching.</b> The composition size k controls how much thinking each task gets. So put <span class="lo" data-focus="low">non-fragile</span> tasks into large batches to save tokens, and keep <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</p>
+    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy unchanged (+0.6 pp). Random batching saves more tokens in the end, but in most cases it comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing only 0.4 pp. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
+
+    <figure id="fig4">
+      <div class="frame" aria-label="Six tasks, two of them twice as wide because they think longer. Random batching into two prompts of three cuts every task to 55 percent and the two wide tasks fail: tokens minus 45 percent, 4 of 6 correct. Fragility-aware batching puts the four narrow tasks together and the two wide ones together; narrow tasks shrink to 47 percent, wide ones to 69 percent, and all six are solved: tokens minus 42 percent, 6 of 6 correct.">
+        <div class="switch" role="group" aria-label="Show method">
+          <button type="button" data-scene="random">random batching</button><span aria-hidden="true">·</span><button type="button" data-scene="aware">fragility-aware</button>
+        </div>
+        <div class="stage" id="stage"></div>
+        <div class="counter"><span>tokens <b id="ctok" class="tok">100%</b></span><span>correct <b id="ccor">6/6</b></span></div>
+        <div class="comment" id="scomment"># batching by fragility avoids tasks failing due to implicit budgeting while still allowing substantial savings</div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 4 ─</span> Toy example with six tasks; savings follow approximately a power law. Fragility-aware batching: 43% fewer tokens at unchanged accuracy across datasets.</figcaption>
+    </figure>
+
+    <details id="full">
+      <summary>full results: all models × datasets (paper Table 2)</summary>
+      <div class="inner">
+        <div class="flags" style="justify-content:flex-start;margin:0">
+          <label>--dataset [<select id="t-dataset"></select> ▾]</label>
+        </div>
+        <p class="scrollhint" aria-hidden="true">scroll sideways for all four policies →</p>
+        <div class="tablebox"><table id="rtable"></table></div>
+        <p class="tnotes" id="tnotes"></p>
+      </div>
+    </details>
+
+    <div class="rule" aria-hidden="true"></div>
+    <div class="closing">
+      <p><b>Implicit budgeting in LLMs acts as a <mark class="hl">double-edged sword</mark>.</b> Under composition, <span class="hi" data-focus="high">fragile</span> tasks receive too little reasoning and fail. In isolation, <span class="lo" data-focus="low">non-fragile</span> tasks receive more reasoning than they need and waste compute.</p>
+      <p>Future training should fix budgeting, for example through post-training. For current models, we show that regrouping tasks already brings large benefits.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="cite">
+    <h2><span><span class="m">##</span> 5&nbsp; cite</span><a class="up" href="#index">[↑ index]</a></h2>
+<pre class="bib" id="bib"><button class="copy" type="button" id="copy">[copy]</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
+  <span class="sy-b">title</span>     = {On the Fragility of Tasks under Composition:
+               Implicit Budgeting in Language Models},
+  <span class="sy-b">author</span>    = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and
+               Gupta, Sharut and Karalias, Nikolaos},
+  <span class="sy-b">year</span>      = {2026},
+}</code></pre>
+    <div class="foot">
+      <p>Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
+      <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
+    </div>
+  </section>
+</main>
+
+<script type="application/json" id="figdata">__FIGDATA__</script>
+<script>
+(() => {
+"use strict";
+const D = JSON.parse(document.getElementById("figdata").textContent);
+const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const HOVER = matchMedia("(hover: hover)").matches;
+const SPEED = 0.5;   // figure time runs at half the wall-clock rate
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const seg = (t, a, b) => ease(clamp((t - a) / (b - a)));
+const lin = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const minus = s => String(s).replace(/-/g, "−");
+const fx = (v, d) => minus(v.toFixed(d));
+const $ = (s, r = document) => r.querySelector(s);
+
+const MODELS = [["qwen3-4b-thinking", "Qwen3 4B Thinking"], ["qwen3-8b", "Qwen3 8B"], ["qwen3-14b", "Qwen3 14B"],
+  ["qwen3-8-27b", "Qwen3.8 27B"], ["r1-qwen-distill-7b", "R1 Qwen 7B"], ["r1-llama-distill-8b", "R1 Llama 8B"], ["r1-qwen3-8b", "R1 Qwen3 8B"]];
+const DATASETS = [["integrals", "Integrals"], ["mmlu", "MMLU-Redux"], ["onewordqa", "OneWordQA"],
+  ["gpqa-diamond", "GPQA-Diamond"], ["gsm8k", "GSM8K"], ["math500", "MATH-500"]];
+const BINS = ["high", "medium", "low"];
+const BIN_NAME = { high: "long", medium: "medium", low: "short" };
+
+function fillSelect(sel, opts, value) {
+  sel.innerHTML = opts.map(([v, l]) => `<option value="${v}"${v === value ? " selected" : ""}>${l}</option>`).join("");
+  const fit = () => { sel.style.width = (sel.options[sel.selectedIndex].text.length + 0.6) + "ch"; };
+  sel.addEventListener("change", fit); fit();
+}
+
+/* ---- the one motion helper every figure plugs into ----
+   Starts once 60% of the figure is in view, pauses when it leaves, plays once and holds
+   the final frame. draw(t) must be a pure function of time t in [0, duration]. */
+function onVisible(el, { duration, draw }) {
+  let t = 0, playing = false, done = false, last = 0, raf = 0;
+  const tick = now => {
+    if (!playing) return;
+    t = Math.min(duration, t + (now - last) * SPEED); last = now; draw(t);
+    if (t >= duration) { playing = false; done = true; } else raf = requestAnimationFrame(tick);
+  };
+  const play = () => { if (playing || done) return; playing = true; last = performance.now(); raf = requestAnimationFrame(tick); };
+  const pause = () => { playing = false; cancelAnimationFrame(raf); };
+  const seek = x => { pause(); t = x; done = true; draw(t); };
+  if (REDUCE) { t = duration; done = true; }
+  draw(t);
+  new IntersectionObserver(es => es.forEach(e => {
+    const tall = e.intersectionRect.height >= 0.6 * innerHeight;
+    if (e.intersectionRatio >= 0.6 || tall) play();
+    else if (e.intersectionRatio < 0.3) pause();
+  }), { threshold: [0, 0.15, 0.3, 0.45, 0.6, 0.8, 1] }).observe(el);
+  const btn = el.closest("figure").querySelector(".replay");
+  if (btn) btn.addEventListener("click", () => {
+    if (REDUCE) return seek(duration);
+    pause(); t = 0; done = false; draw(0); play();
+  });
+  addEventListener("beforeprint", () => seek(duration));
+  return { seek, redraw: () => draw(t) };
+}
+
+/* ---------- fig 1: terminal ---------- */
+(function fig1() {
+  const term = $("#term");
+  const lines = [...term.querySelectorAll(".ln[data-l]")];
+  const ticks = lines.map(l => [...l.querySelectorAll(".res i")]);
+  const igs = [...term.querySelectorAll(".merged .ig")], pls = [...term.querySelectorAll(".merged .pl")];
+  const merged = $(".merged", term), pr = $(".merged .pr", term), think = $(".think", term), dots = $(".dots", term);
+  const outs = [...term.querySelectorAll(".out .o")], cm = $(".cm", term);
+  const op = (el, v) => { el.style.opacity = v; };
+  function draw(t) {
+    ticks.forEach((row, i) => row.forEach((el, j) => {
+      const p = seg(t, 150 + i * 420 + j * 110, 330 + i * 420 + j * 110);
+      op(el, p); el.style.transform = `scale(${0.6 + 0.4 * p})`;
+    }));
+    lines.forEach(l => op(l, 1 - 0.55 * seg(t, 1650, 1950)));
+    const shown = t >= 1700;
+    op(merged, shown ? 1 : 0); op(pr, seg(t, 1700, 1900));
+    igs.forEach((el, i) => {
+      const p = seg(t, 1750 + i * 150, 2350 + i * 150);
+      op(el, p); el.style.transform = `translateY(${(1 - p) * -(3 - i) * 26}px)`;
+    });
+    pls.forEach(el => op(el, seg(t, 2350, 2700)));
+    const th = t >= 2900 && t < 3700 ? 1 : t >= 3700 ? 0.55 : 0;
+    op(think, th);
+    dots.textContent = t >= 3700 || t < 2900 ? "···" : "·".repeat(1 + Math.floor((t - 2900) / 180) % 3).padEnd(3, " ");
+    outs.forEach((el, i) => op(el, seg(t, 3750 + i * 260, 3950 + i * 260)));
+    op(cm, seg(t, 4600, 5000));
+  }
+  // the merged command's plain text ("solve", quotes, "dx") fades with the prompt
+  const wrapText = () => {
+    [...merged.childNodes].forEach(n => {
+      if (n.nodeType === 3 && n.textContent.trim()) {
+        const s = document.createElement("span"); s.className = "mt"; s.textContent = n.textContent; merged.replaceChild(s, n);
+      }
+    });
+  };
+  wrapText();
+  const mts = [...merged.querySelectorAll(".mt")];
+  const draw2 = t => { draw(t); mts.forEach(el => op(el, seg(t, 1700, 1950))); };
+  onVisible($("#fig1 .frame"), { duration: 5000, draw: draw2 });
+})();
+
+/* ---------- shared chart pieces ---------- */
+function axes({ W, H, M, xt, yt, X, Y, xl, yl }) {
+  let s = "";
+  for (const [v, l] of yt) {
+    const y = Y(v).toFixed(1);
+    s += `<line class="grid" x1="${M.l}" x2="${W - M.r}" y1="${y}" y2="${y}"/><text class="tk" x="${M.l - 8}" y="${+y + 4}" text-anchor="end">${l}</text>`;
+  }
+  for (const [v, l] of xt) {
+    const x = X(v).toFixed(1);
+    s += `<line class="tick" x1="${x}" x2="${x}" y1="${H - M.b}" y2="${H - M.b + 4}"/><text class="tk" x="${x}" y="${H - M.b + 17}" text-anchor="middle">${l}</text>`;
+  }
+  s += `<line class="ax" x1="${M.l}" x2="${W - M.r}" y1="${H - M.b}" y2="${H - M.b}"/>`;
+  s += `<text class="al" x="${((M.l + W - M.r) / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle">${xl}</text>`;
+  s += `<text class="al" transform="translate(11 ${((M.t + H - M.b) / 2).toFixed(1)}) rotate(-90)" text-anchor="middle">${yl}</text>`;
+  return s;
+}
+function hoverTip(box, svg, tip, getPts, fmt) {
+  if (!HOVER) return;
+  svg.addEventListener("pointermove", e => {
+    const r = svg.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    let best = null, bd = 16 * 16;
+    for (const p of getPts()) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }
+    if (!best) { tip.hidden = true; return; }
+    tip.hidden = false; tip.innerHTML = fmt(best);
+    tip.style.left = best.x + "px"; tip.style.top = best.y + "px";
+  });
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; });
+}
+function nice(x) { const p = Math.pow(10, Math.floor(Math.log10(x))), n = x / p; return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p; }
+function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
+
+/* ---------- fig 2: power law ---------- */
+(function fig2() {
+  const box = $("#pplot"), svg = $("svg", box), tip = $(".tip", box), out = $("#preadout");
+  const selD = $("#f2-dataset"), selM = $("#f2-model");
+  fillSelect(selD, DATASETS, "mmlu"); fillSelect(selM, MODELS, "qwen3-4b-thinking");
+  let to = target(), from = null, m0 = 0, lineP = 0, labA = 0, cur = to, pts = [];
+  function target() {
+    const e = D.fig2[selD.value][selM.value], bins = {};
+    let kmax = 1, ymin = 1;
+    for (const g of BINS) {
+      const s = e.bins[g];
+      bins[g] = { m: s.m, pts: s.k.map((k, i) => ({ k, r: s.r[i], a: 1 })) };
+      kmax = Math.max(kmax, ...s.k); ymin = Math.min(ymin, ...s.r);
+    }
+    for (const g of BINS) ymin = Math.min(ymin, Math.pow(kmax, bins[g].m));
+    return { kmax, ymin, bins, m: e.m, r2: e.r2 };
+  }
+  function mix(a, b, p) {
+    const L = (x, y) => Math.exp(lerp(Math.log(x), Math.log(y), p));
+    const o = { kmax: L(a.kmax, b.kmax), ymin: L(a.ymin, b.ymin), bins: {} };
+    for (const g of BINS) {
+      const A = new Map(a.bins[g].pts.map(q => [q.k, q])), B = new Map(b.bins[g].pts.map(q => [q.k, q]));
+      const ks = [...new Set([...A.keys(), ...B.keys()])].sort((x, y) => x - y);
+      o.bins[g] = { m: lerp(a.bins[g].m, b.bins[g].m, p), pts: ks.map(k => {
+        const qa = A.get(k), qb = B.get(k);
+        if (qa && qb) return { k, r: L(qa.r, qb.r), a: lerp(qa.a, qb.a, p) };
+        if (qa) return { k, r: qa.r, a: qa.a * (1 - p) };
+        return { k, r: qb.r, a: qb.a * p };
+      }) };
+    }
+    return o;
+  }
+  function render() {
+    let S = to;
+    if (from) {
+      const p = seg(performance.now() - m0, 0, 400 / SPEED);
+      S = mix(from, to, p);
+      if (p >= 1) from = null;
+    }
+    cur = S;
+    const W = box.clientWidth; if (!W) return;
+    const H = Math.round(clamp(W * 0.6, 250, 360));
+    const M = { l: 44, r: W < 420 ? 76 : 88, t: 12, b: 40 };
+    const lx0 = Math.log(0.9), lx1 = Math.log(S.kmax * 1.1), ly0 = Math.log(S.ymin * 0.8), ly1 = Math.log(1.25);
+    const X = k => M.l + (Math.log(k) - lx0) / (lx1 - lx0) * (W - M.l - M.r);
+    const Y = r => M.t + (ly1 - Math.log(r)) / (ly1 - ly0) * (H - M.t - M.b);
+    const xt = [1, 2, 4, 6, 10, 20].filter(k => k <= S.kmax * 1.05).map(k => [k, k]);
+    const yt = [0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 1].filter(v => Math.log(v) >= ly0 && Math.log(v) <= ly1)
+      .map(v => [v, v === 1 ? "1" : v < 0.1 ? v.toFixed(2) : v.toFixed(1)]);
+    let s = axes({ W, H, M, xt, yt, X, Y, xl: "tasks per composition, k", yl: "token ratio r" });
+    s += `<line class="one" x1="${M.l}" x2="${W - M.r}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}"/>`;
+    const kend = Math.exp(lineP * Math.log(S.kmax));
+    for (const g of BINS) {
+      const m = S.bins[g].m;
+      s += `<line class="fit s-${g}" data-g="${g}" x1="${X(1).toFixed(1)}" y1="${Y(1).toFixed(1)}" x2="${X(kend).toFixed(1)}" y2="${Y(Math.pow(kend, m)).toFixed(1)}"/>`;
+    }
+    pts = [];
+    for (const g of BINS) for (const q of S.bins[g].pts) {
+      if (q.a <= 0.01) continue;
+      const x = X(q.k), y = Y(q.r);
+      pts.push({ x, y, k: q.k, r: q.r, g });
+      s += `<circle class="pt p-${g}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" opacity="${q.a.toFixed(2)}"/>`;
+    }
+    s += `<circle class="pt0" cx="${X(1).toFixed(1)}" cy="${Y(1).toFixed(1)}" r="4"/>`;
+    const labs = BINS.map(g => ({ g, m: S.bins[g].m, y: Y(Math.pow(S.kmax, S.bins[g].m)) + 4 })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labs.length; i++) labs[i].y = Math.max(labs[i].y, labs[i - 1].y + 16);
+    const over = labs[labs.length - 1].y - (H - M.b - 2);
+    if (over > 0) labs.forEach(l => { l.y -= over; });
+    for (const l of labs)
+      s += `<text class="lab" data-g="${l.g}" x="${(X(S.kmax) + 9).toFixed(1)}" y="${l.y.toFixed(1)}" opacity="${labA.toFixed(2)}">${W < 500 ? "" : "∝ "}k${sup(fx(l.m, 2))}</text>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = s;
+    const exc = selD.value === "math500" && selM.value === "r1-qwen-distill-7b" ? " (the one flat exception)" : "";
+    out.innerHTML = `fit: m = <b>${fx(to.m, 2)}</b>&nbsp; R² = <b>${fx(to.r2, 2)}</b>${exc}`;
+    out.style.opacity = labA;
+    if (from) requestAnimationFrame(render);
+  }
+  function change() {
+    const snap = { kmax: cur.kmax, ymin: cur.ymin, bins: {} };
+    for (const g of BINS) snap.bins[g] = { m: cur.bins[g].m, pts: cur.bins[g].pts.filter(q => q.a > 0.01) };
+    to = target();
+    if (REDUCE) { from = null; render(); return; }
+    from = snap; m0 = performance.now(); requestAnimationFrame(render);
+  }
+  selD.addEventListener("change", change); selM.addEventListener("change", change);
+  hoverTip(box, svg, tip, () => pts, p => `k = ${p.k} · r = ${p.r.toFixed(2)}`);
+  const mo = onVisible($("#fig2 .frame"), { duration: 1500, draw: t => { lineP = seg(t, 0, 1200); labA = seg(t, 1050, 1500); render(); } });
+  new ResizeObserver(() => mo.redraw()).observe(box);
+})();
+
+/* ---------- fig 3: same cut, different slack ---------- */
+(function fig3() {
+  const box = $("#bplot"), svg = $("svg", box), comment = $("#bcomment");
+  const alone = [0.36, 0.56, 0.95], need = [0.13, 0.21, 0.84], F = 0.55;
+  const groups = ["low", "low", "high"];
+  function draw(t) {
+    const W = box.clientWidth; if (!W) return;
+    const L = 66, R = 34, top = 34, rowH = 42, bh = 18, H = top + rowH * 3 + 14;
+    const BW = W - L - R, x = f => L + f * BW;
+    const a0 = seg(t, 0, 400), s = seg(t, 400, 1200), c = seg(t, 1300, 1700);
+    let o = `<text class="hint" x="${L}" y="12">thinking tokens →</text>`;
+    o += `<text class="hint" x="${W - R}" y="12" text-anchor="end"><tspan font-weight="700" style="fill:var(--fg)" opacity="${a0.toFixed(2)}">× k${sup("m")}</tspan></text>`;
+    for (let i = 0; i < 3; i++) {
+      const y = top + i * rowH, w0 = alone[i] * BW, w = w0 * (1 - (1 - F) * s), nx = x(need[i]), end = L + w, g = groups[i];
+      o += `<g data-g="${g}">`;
+      o += `<text class="rowlab" x="0" y="${y + 13}">term ${i + 1}</text>`;
+      o += `<rect class="ghost" x="${L}" y="${y + 0.5}" width="${w0.toFixed(1)}" height="${bh - 1}" opacity="${seg(t, 400, 600).toFixed(2)}"/>`;
+      o += `<rect class="bar" x="${L}" y="${y}" width="${w.toFixed(1)}" height="${bh}"/>`;
+      if (end > nx) o += `<rect class="slack" x="${nx.toFixed(1)}" y="${y}" width="${(end - nx).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
+      else o += `<rect class="deficit" x="${end.toFixed(1)}" y="${y}" width="${(nx - end).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
+      o += `<line class="need" x1="${nx.toFixed(1)}" x2="${nx.toFixed(1)}" y1="${y - 5}" y2="${y + bh + 5}"/>`;
+      o += `<text class="${end > nx ? "mk-ok" : "mk-bad"}" x="${W - 6}" y="${y + 14}" text-anchor="end" opacity="${c.toFixed(2)}">${end > nx ? "✓" : "✗"}</text>`;
+      o += `</g>`;
+    }
+    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--blue)">■</tspan> slack<tspan dx="16" style="fill:var(--red)">■</tspan> deficit</text>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = o;
+    comment.style.opacity = seg(t, 1800, 2200);
+  }
+  const mo = onVisible($("#fig3 .frame"), { duration: 2200, draw });
+  new ResizeObserver(() => mo.redraw()).observe(box);
+})();
+
+/* ---------- fig 5 (inside details): accuracy drop vs token reduction ---------- */
+(function fig5() {
+  const det = $("#evidence"), box = $("#eplot"), svg = $("svg", box), tip = $(".tip", box);
+  const selD = $("#f5-dataset"), selM = $("#f5-model");
+  fillSelect(selD, DATASETS, "mmlu"); fillSelect(selM, MODELS, "qwen3-4b-thinking");
+  let P = 1, p0 = 0, pts = [];
+  function render() {
+    if (p0) { P = lin(performance.now() - p0, 0, 400 / SPEED); if (P >= 1) p0 = 0; }
+    const W = box.clientWidth; if (!W) return;
+    const e = D.fig5[selD.value][selM.value];
+    const H = Math.round(clamp(W * 0.58, 240, 340)), M = { l: 46, r: 12, t: 10, b: 40 };
+    const xs = BINS.flatMap(g => e[g].x), ys = BINS.flatMap(g => e[g].y);
+    const x0 = Math.max(0, Math.floor((Math.min(...xs) - 0.04) * 10) / 10), x1 = Math.min(1, Math.ceil((Math.max(...xs) + 0.03) * 10) / 10);
+    const lo = Math.min(0, ...ys), hi = Math.max(0, ...ys), st = nice((hi - lo) / 4 || 1);
+    const y0 = Math.floor(lo / st) * st, y1 = Math.ceil(hi / st) * st, pad = st * 0.15;
+    const X = v => M.l + (v - x0) / (x1 - x0) * (W - M.l - M.r);
+    const Y = v => M.t + (y1 + pad - v) / (y1 - y0 + 2 * pad) * (H - M.t - M.b);
+    const xs_ = (x1 - x0) > 0.5 ? 0.2 : 0.1, xt = [];
+    for (let v = Math.ceil(x0 / xs_ - 1e-9) * xs_; v <= x1 + 1e-9; v += xs_) xt.push([v, Math.round(v * 100) + "%"]);
+    const yt = [];
+    for (let v = y0; v <= y1 + 1e-9; v += st) yt.push([v, Math.abs(v) < 1e-9 ? "0" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(st < 1 ? 1 : 0)]);
+    let s = axes({ W, H, M, xt, yt, X, Y, xl: "token reduction, 1 − r", yl: "accuracy change (pp)" });
+    s += `<line class="zero" x1="${M.l}" x2="${W - M.r}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+    pts = [];
+    for (const g of BINS) {
+      const d = e[g], vis = d.x.map(v => clamp((P * 1.2 - (v - x0) / (x1 - x0)) / 0.2));
+      const path = d.x.map((v, i) => vis[i] > 0 ? `${X(v).toFixed(1)},${Y(d.y[i]).toFixed(1)}` : null).filter(Boolean);
+      if (path.length > 1) s += `<polyline class="path s-${g}" data-g="${g}" points="${path.join(" ")}" opacity="0.55"/>`;
+      d.x.forEach((v, i) => {
+        if (vis[i] <= 0) return;
+        const x = X(v), y = Y(d.y[i]);
+        pts.push({ x, y, k: d.k[i], xr: v, dy: d.y[i], g });
+        s += `<circle class="pt p-${g}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" opacity="${vis[i].toFixed(2)}"/>`;
+      });
+    }
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = s;
+    if (p0) requestAnimationFrame(render);
+  }
+  const change = () => { if (REDUCE) { P = 1; render(); return; } P = 0; p0 = performance.now(); requestAnimationFrame(render); };
+  selD.addEventListener("change", change); selM.addEventListener("change", change);
+  det.addEventListener("toggle", () => { if (det.open) render(); });
+  hoverTip(box, svg, tip, () => pts, p => `${BIN_NAME[p.g]} · k = ${p.k} · −${Math.round(p.xr * 100)}% tokens · ${p.dy >= 0 ? "+" : "−"}${Math.abs(p.dy).toFixed(1)} pp`);
+  new ResizeObserver(() => render()).observe(box);
+})();
+
+/* ---------- fig 4: random vs fragility-aware batching ---------- */
+(function fig4() {
+  const stage = $("#stage"), ctok = $("#ctok"), ccor = $("#ccor"), comment = $("#scomment");
+  const btns = [...document.querySelectorAll("#fig4 .switch button")];
+  const U = 8.6, G = 1.6, BP = 2.4, GG = 6;
+  const wide = [false, true, false, false, true, false];
+  const W = wide.map(w => (w ? 2 : 1) * U);
+  // initial row
+  const rowW = W.reduce((a, b) => a + b, 0) + 5 * G;
+  const X0 = []; { let x = (100 - rowW) / 2; W.forEach((w, i) => { X0[i] = x; x += w + G; }); }
+  function layout(groups) {
+    const gw = groups.map(g => g.reduce((a, i) => a + W[i], 0) + (g.length - 1) * G + 2 * BP);
+    let x = (100 - gw.reduce((a, b) => a + b, 0) - GG * (groups.length - 1)) / 2;
+    const pos = [], br = [];
+    groups.forEach((g, j) => {
+      br.push([x, gw[j]]);
+      let bx = x + BP; g.forEach(i => { pos[i] = bx; bx += W[i] + G; });
+      x += gw[j] + GG;
+    });
+    return { pos, br };
+  }
+  const RND = layout([[0, 1, 3], [2, 4, 5]]), AWR = layout([[0, 2, 3, 5], [1, 4]]);
+  const mk = (cls, txt = "") => { const d = document.createElement("div"); d.className = cls; d.textContent = txt; stage.appendChild(d); return d; };
+  const status = mk("status"), scan = mk("scan");
+  const brk = [mk("brk"), mk("brk")];
+  const boxes = W.map((w, i) => {
+    const el = mk("b4"); el.dataset.g = wide[i] ? "high" : "low";
+    el.innerHTML = `<div class="ghost"></div><div class="fill"><div class="tint ${wide[i] ? "r" : "b"}"></div></div>`;
+    const m = mk("mk4 neutral", "✓"), lb = mk("lb4", "T" + (i + 1));
+    m.dataset.g = el.dataset.g;
+    return { el, fill: $(".fill", el), tint: $(".tint", el), ghost: $(".ghost", el), m, lb };
+  });
+  const dots = t => "thinking " + "·".repeat(1 + Math.floor(t / 180) % 3);
+  function place(b, i, x, frac) {
+    b.el.style.left = x + "%"; b.el.style.width = W[i] + "%";
+    b.fill.style.width = (frac * 100) + "%";
+    b.m.style.left = (x + W[i] / 2) + "%"; b.lb.style.left = (x + W[i] / 2) + "%";
+  }
+  function mark(b, c, good) {
+    // flip from the neutral solved-alone tick to the composed outcome
+    const after = c >= 0.5;
+    b.m.className = "mk4 " + (after ? (good ? "ok" : "bad") : "neutral");
+    b.m.textContent = after && !good ? "✗" : "✓";
+    b.m.style.transform = `scaleY(${Math.abs(1 - 2 * c).toFixed(2)})`;
+  }
+  const RF = 2800, F0 = 3200, T = F0 + 3100;
+  function draw(t) {
+    const aware = t >= 3000;
+    btns.forEach(b => b.classList.toggle("on", (b.dataset.scene === "aware") === aware));
+    let alpha, saved = 0, correct = 6, st = "";
+    if (!aware) {
+      alpha = 1 - lin(t, RF, 3000);
+      const p = seg(t, 0, 600), s = seg(t, 700, 1300), c = lin(t, 1300, 1600);
+      RND.br.forEach(([x, w], j) => { brk[j].style.left = x + "%"; brk[j].style.width = w + "%"; brk[j].style.opacity = seg(t, 300, 600); });
+      boxes.forEach((b, i) => {
+        place(b, i, lerp(X0[i], RND.pos[i], p), 1 - 0.45 * s);
+        b.ghost.style.opacity = s > 0 ? 1 : 0; b.tint.style.opacity = 0;
+        mark(b, c, !wide[i]);
+      });
+      if (t >= 700 && t < 1300) st = dots(t - 700);
+      saved = 45 * seg(t, 1300, 1800); correct = c >= 0.5 ? 4 : 6;
+      scan.style.opacity = 0; comment.style.opacity = 0;
+    } else {
+      const u = t - F0;
+      alpha = lin(t, 3000, F0);
+      const sx = lerp(X0[0] - 1.5, X0[5] + W[5] + 1.5, lin(u, 0, 700));
+      scan.style.left = sx + "%"; scan.style.opacity = u >= 0 && u <= 700 ? 1 : 0;
+      const p = seg(u, 800, 1400), s = seg(u, 1500, 2100), c = lin(u, 2200, 2500);
+      AWR.br.forEach(([x, w], j) => { brk[j].style.left = x + "%"; brk[j].style.width = w + "%"; brk[j].style.opacity = seg(u, 1100, 1400); });
+      boxes.forEach((b, i) => {
+        place(b, i, lerp(X0[i], AWR.pos[i], p), 1 - (wide[i] ? 0.31 : 0.53) * s);
+        b.ghost.style.opacity = s > 0 ? 1 : 0;
+        b.tint.style.opacity = (0.72 * clamp((sx - X0[i]) / W[i])).toFixed(2);
+        mark(b, c, true);
+      });
+      if (u >= 0 && u < 750) st = "measure fragility";
+      else if (u >= 1500 && u < 2100) st = dots(u - 1500);
+      saved = 42 * seg(u, 2200, 2700);
+      comment.style.opacity = seg(u, 2700, 3100);
+    }
+    status.textContent = st;
+    stage.style.opacity = alpha;
+    ctok.textContent = saved < 0.5 ? "100%" : "−" + Math.round(saved) + "%";
+    ccor.textContent = correct + "/6";
+  }
+  const mo = onVisible($("#fig4 .frame"), { duration: T, draw });
+  btns.forEach(b => b.addEventListener("click", () => mo.seek(b.dataset.scene === "aware" ? T : RF)));
+})();
+
+/* ---------- Table 2 ---------- */
+(function table() {
+  const T = {
+    "gpqa-diamond": ["GPQA-Diamond", `Qwen3 4B T.|66.7|7663|56.4|-10.3|2470|-67.8|66.8|+0.2|5200|-32.1|67.3|+0.7|7534|-1.7
+Qwen3 8B|58.7|5973|53.4|-5.3|1950|-67.4|60.0|+1.3|3520|-41.1|56.9|-1.8|5106|-14.5
+Qwen3 14B|61.5|4597|51.8|-9.7|1500|-67.4|57.9|-3.7|2111|-54.1|61.3|-0.2|3665|-20.3
+Qwen3.8 27B|83.2|4303|79.2|-4.0|2740|-36.3|84.0|+0.8|4102|-4.7|85.3|+2.1|4324|+0.5
+R1 Qwen 7B|49.1|6686|23.6|-25.5|1305|-80.5|49.6|+0.5|4037|-39.6|46.7|-2.4|5953|-11.0
+R1 Llama 8B|47.7|7424|32.1|-15.6|1771|-76.2|49.6|+1.9|4526|-39.0|48.6|+0.9|5816|-21.7
+R1 Qwen3 8B|60.8|9084|48.1|-12.6|2398|-73.6|61.9|+1.2|6595|-27.4|59.8|-1.0|8877|-2.3
+Claude Opus 5|89.5|689|88.7|-0.9|564|-18.2|89.2|-0.4|521|-24.3|87.6|-2.0|686|-0.5`, "64.7|5802|-10.5|-60.9|+0.2|-32.8|-0.5|-8.9"],
+    "gsm8k": ["GSM8K", `Qwen3 4B T.|95.2|1151|91.9|-3.3|472|-59.0|93.4|-1.8|467|-59.5|94.9|-0.3|793|-31.2
+Qwen3 8B|95.4|769|95.2|-0.2|371|-51.8|95.0|-0.4|279|-63.7|95.1|-0.3|537|-30.1
+Qwen3 14B|96.1|587|95.9|-0.2|253|-56.9|95.9|-0.2|200|-66.0|95.7|-0.3|314|-46.6
+Qwen3.8 27B|97.4|263|97.5|+0.1|200|-24.0|97.5|+0.1|158|-40.1|97.5|0.0|157|-40.1
+R1 Qwen 7B|91.4|834|87.5|-3.9|187|-77.6|90.8|-0.7|308|-63.1|91.6|+0.1|824|-1.2
+R1 Llama 8B|89.5|685|81.8|-7.8|278|-59.4|89.3|-0.2|672|-1.9|89.4|-0.1|797|+16.4
+R1 Qwen3 8B|92.8|2377|91.8|-1.0|795|-66.6|93.0|+0.2|911|-61.7|92.8|0.0|2163|-9.0`, "94.0|952|-2.3|-56.5|-0.4|-50.8|-0.1|-20.3"],
+    "math500": ["MATH-500", `Qwen3 4B T.|97.6|4064|96.4|-1.1|2148|-47.2|97.7|+0.1|3716|-8.6|96.8|-0.8|3605|-11.3
+Qwen3 8B|95.9|3449|95.6|-0.3|1751|-49.2|95.1|-0.8|2173|-37.0|95.9|+0.1|2775|-19.5
+Qwen3 14B|96.9|2604|95.9|-1.0|1375|-47.2|96.6|-0.2|2454|-5.8|96.6|-0.2|2444|-6.2
+Qwen3.8 27B|98.1|1014|96.7|-1.5|748|-26.2|97.8|-0.4|943|-7.1|97.2|-0.9|994|-2.0
+R1 Qwen 7B|93.0|2383|69.8|-23.2|1658|-30.4|93.2|+0.2|2205|-7.5|93.4|+0.4|2381|-0.1
+R1 Llama 8B|88.7|3019|79.4|-9.3|1569|-48.0|88.5|-0.2|2948|-2.3|88.8|+0.2|3333|+10.4
+R1 Qwen3 8B|96.8|6767|93.0|-3.8|3705|-45.2|96.6|-0.2|6608|-2.4|96.7|-0.2|6657|-1.6`, "95.3|3329|-5.7|-41.9|-0.2|-10.1|-0.2|-4.3"],
+    "integrals": ["Integrals", `Qwen3 4B T.|99.9|1914|99.2|-0.7|1029|-46.3|99.7|-0.2|1411|-26.3|99.6|-0.3|908|-52.6
+Qwen3 8B|99.7|2887|98.8|-0.9|946|-67.2|99.8|+0.1|2717|-5.9|98.8|-0.9|1192|-58.7
+Qwen3 14B|99.8|2321|99.0|-0.8|670|-71.1|99.5|-0.3|1335|-42.5|99.6|-0.2|756|-67.4
+Qwen3.8 27B|99.8|724|98.8|-1.0|564|-22.1|99.5|-0.3|624|-13.8|99.6|-0.2|550|-24.0
+R1 Qwen 7B|96.4|2519|90.8|-5.5|547|-78.3|96.0|-0.4|2277|-9.6|96.3|0.0|2291|-9.0
+R1 Llama 8B|93.7|2462|86.7|-7.0|613|-75.1|93.1|-0.6|2161|-12.2|93.6|-0.1|1926|-21.8
+R1 Qwen3 8B|98.5|4082|96.7|-1.8|1339|-67.2|97.9|-0.6|4344|+6.4|98.5|0.0|2701|-33.8`, "98.3|2416|-2.5|-61.0|-0.3|-14.8|-0.3|-38.2"],
+    "mmlu": ["MMLU-Redux", `Qwen3 4B T.|84.7|1944|82.9|-1.8|527|-72.9|85.3|+0.6|527|-72.9|84.9|+0.2|1663|-14.5
+Qwen3 8B|87.2|921|84.0|-3.3|306|-66.7|86.1|-1.1|285|-69.0|86.9|-0.3|922|+0.2
+Qwen3 14B|89.0|718|85.8|-3.3|212|-70.5|88.2|-0.9|319|-55.6|88.3|-0.7|678|-5.5
+Qwen3.8 27B|92.4|488|91.9|-0.5|262|-46.4|91.8|-0.6|196|-59.8|92.1|-0.3|352|-27.9
+R1 Qwen 7B|70.1|1079|60.6|-9.5|397|-63.2|69.7|-0.3|601|-44.3|70.4|+0.3|1127|+4.5
+R1 Llama 8B|75.5|1458|58.6|-16.9|431|-70.4|75.9|+0.3|896|-38.5|75.3|-0.2|1430|-1.9
+R1 Qwen3 8B|81.6|1711|64.5|-17.1|279|-83.7|82.1|+0.5|1273|-25.6|82.2|+0.6|1714|+0.2`, "82.9|1188|-7.5|-67.7|-0.2|-52.2|-0.1|-6.4"],
+    "onewordqa": ["OneWordQA", `Qwen3 4B T.|92.0|668|92.1|+0.1|383|-42.6|91.7|-0.3|179|-73.2|91.8|-0.2|185|-72.4
+Qwen3 8B|91.7|212|92.0|+0.3|71|-66.7|92.1|+0.4|46|-78.2|92.2|+0.5|46|-78.1
+Qwen3 14B|92.4|207|92.8|+0.4|73|-64.6|93.2|+0.7|48|-76.6|93.3|+0.9|47|-77.1
+Qwen3.8 27B|93.3|71|93.4|+0.1|40|-43.8|93.4|+0.2|36|-50.0|93.4|+0.2|35|-51.3
+R1 Qwen 7B|72.0|454|76.5|+4.4|105|-76.8|76.5|+4.4|98|-78.3|77.1|+5.0|89|-80.4
+R1 Llama 8B|78.0|484|84.0|+6.0|86|-82.2|83.5|+5.5|74|-84.6|84.0|+6.0|81|-83.3
+R1 Qwen3 8B†|81.5|328|28.6|-52.9|136|-58.6|82.1|+0.6|354|+7.8|82.3|+0.8|322|-1.7`, "86.6|349|+1.9|-62.8|+1.8|-73.5|+2.1|-73.8"],
+    "strategyqa": ["StrategyQA", `Qwen3 4B T.|63.2|836|67.7|+4.5|509|-39.1|68.2|+5.0|248|-70.4|67.4|+4.1|246|-70.6
+Qwen3 8B|70.1|394|72.1|+1.9|96|-75.6|71.8|+1.7|57|-85.4|70.8|+0.7|52|-86.8
+Qwen3 14B|70.0|366|73.2|+3.3|84|-77.1|73.5|+3.5|60|-83.6|73.4|+3.4|54|-85.3
+Qwen3.8 27B|79.4|224|80.2|+0.8|151|-32.4|81.8|+2.4|145|-35.0|81.0|+1.6|144|-35.5
+R1 Qwen 7B|56.9|651|58.9|+2.0|84|-87.1|58.5|+1.6|57|-91.2|57.8|+0.8|47|-92.8
+R1 Llama 8B|58.9|446|65.6|+6.7|81|-81.9|65.2|+6.3|95|-78.7|64.6|+5.6|51|-88.5
+R1 Qwen3 8B|70.0|606|67.7|-2.3|89|-85.4|71.1|+1.1|425|-29.9|69.9|-0.1|629|+3.8`, "66.9|503|+2.4|-68.4|+3.1|-67.7|+2.3|-65.1"],
+  };
+  const ORDER = ["gpqa-diamond", "gsm8k", "math500", "integrals", "mmlu", "onewordqa", "strategyqa"];
+  const sel = $("#t-dataset"), tbl = $("#rtable"), notes = $("#tnotes");
+  fillSelect(sel, ORDER.map(k => [k, T[k][0]]), "gpqa-diamond");
+  const acc = (a, d, grey) => `<td class="sep${!grey && parseFloat(d) <= -1 ? " neg" : ""}">${a}% <small>(${minus(d)})</small></td>`;
+  const tok = (v, d) => `<td>${v} <small>(${minus(d)}%)</small></td>`;
+  function render() {
+    const [, rows, avg] = T[sel.value];
+    let h = `<thead><tr><th></th><th colspan="2">isolated, k = 1</th><th colspan="2" class="sep">random, k = 6</th><th colspan="2" class="sep">fragility-aware (measured)</th><th colspan="2" class="sep">fragility-aware (probe)</th></tr>
+<tr><th>model</th><th>acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th></tr></thead><tbody>`;
+    for (const line of rows.split("\n")) {
+      const c = line.split("|"), grey = c[0].endsWith("†");
+      h += `<tr${grey ? ' class="grey"' : ""}><td>${c[0]}</td><td>${c[1]}%</td><td>${c[2]}</td>`;
+      [[3, 4, 5, 6], [7, 8, 9, 10], [11, 12, 13, 14]].forEach(([a, d, v, dv]) => {
+        h += acc(c[a], c[d], grey) + tok(c[v], c[dv]);
+      });
+      h += "</tr>";
+    }
+    const a = avg.split("|");
+    const ac = v => `<td class="sep${parseFloat(v) <= -1 ? " neg" : ""}">${minus(v)}</td>`;
+    h += `<tr class="avg"><td>Average</td><td>${a[0]}%</td><td>${a[1]}</td>${ac(a[2])}<td>${minus(a[3])}%</td>${ac(a[4])}<td>${minus(a[5])}%</td>${ac(a[6])}<td>${minus(a[7])}%</td></tr></tbody>`;
+    tbl.innerHTML = h;
+    notes.innerHTML = "Accuracy and output tokens per task (thinking plus answer); changes against k = 1 in parentheses, in pp for accuracy and in % for tokens. Accuracy losses of 1 pp or more are red."
+      + (sel.value === "onewordqa" ? " † R1 Qwen3 8B breaks the answer format under composition on OneWordQA, which causes parsing errors, so the Average leaves it out." : "")
+      + (sel.value === "gpqa-diamond" ? " Claude Opus 5 is measured with fewer trials to limit cost." : "")
+      + " AIME is missing because nearly every task degrades already at k = 3, so fragility-aware batching keeps almost every task alone.";
+  }
+  sel.addEventListener("change", render); render();
+})();
+
+/* ---------- page furniture ---------- */
+document.querySelectorAll("a.todo").forEach(a => a.addEventListener("click", e => e.preventDefault()));
+addEventListener("beforeprint", () => document.querySelectorAll("details").forEach(d => { d.open = true; }));
+
+// coloured keywords pick out the matching marks in the figures
+document.querySelectorAll("[data-focus]").forEach(el => {
+  el.addEventListener("mouseenter", () => { document.body.dataset.focus = el.dataset.focus; });
+  el.addEventListener("mouseleave", () => { delete document.body.dataset.focus; });
+});
+
+// margin notes sit level with their footnote mark on wide screens
+const wideQ = matchMedia("(min-width: 1200px)");
+function placeNotes() {
+  const col = $(".col"), cr = col.getBoundingClientRect();
+  let floor = -Infinity;
+  document.querySelectorAll(".sn").forEach(n => {
+    if (!wideQ.matches) { n.style.top = ""; return; }
+    const ref = $(`.fn[data-fn="${n.dataset.for}"]`);
+    let top = ref.getBoundingClientRect().top - cr.top - 4;
+    top = Math.max(top, floor + 10);
+    n.style.top = top + "px";
+    floor = top + n.offsetHeight;
+  });
+}
+wideQ.addEventListener("change", placeNotes);
+addEventListener("resize", placeNotes);
+new ResizeObserver(placeNotes).observe($(".col"));
+document.fonts && document.fonts.ready.then(placeNotes);
+placeNotes();
+
+// a footnote mark and its margin note light up together
+document.querySelectorAll(".sn").forEach(n => {
+  const ref = $(`.fn[data-fn="${n.dataset.for}"]`);
+  const on = v => () => { n.classList.toggle("lit", v); ref.classList.toggle("lit", v); };
+  [n, ref].forEach(el => { el.addEventListener("mouseenter", on(true)); el.addEventListener("mouseleave", on(false)); });
+});
+
+// section rail
+const rail = [...document.querySelectorAll(".rail a")], secs = rail.map(a => document.getElementById(a.dataset.s));
+function onScroll() {
+  const y = innerHeight * 0.4;
+  let on = -1;
+  secs.forEach((s, i) => { if (s.getBoundingClientRect().top < y) on = i; });
+  if (on === secs.length - 1 && $("#cite").getBoundingClientRect().top < y) on = -1;
+  rail.forEach((a, i) => a.classList.toggle("on", i === on));
+  $(".rail").classList.toggle("live", secs[0].getBoundingClientRect().top < innerHeight * 0.6);
+}
+addEventListener("scroll", () => requestAnimationFrame(onScroll), { passive: true });
+onScroll();
+
+// copy BibTeX
+$("#copy").addEventListener("click", () => {
+  const code = $("#bib code"), btn = $("#copy");
+  const done = () => { btn.textContent = "[copied]"; setTimeout(() => { btn.textContent = "[copy]"; }, 1600); };
+  const select = () => { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "[selected, press ⌘C]"; };
+  try { navigator.clipboard.writeText(code.textContent).then(done, select); } catch (e) { select(); }
+});
+})();
+</script>

@@ -1,0 +1,969 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Language models fail on compositions of tasks they solve alone, because they cut every task's thinking by the same factor. Fragility-aware batching saves 43% of tokens at unchanged accuracy.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models">
+<meta property="og:description" content="Language models fail on compositions of tasks they solve alone, because they cut every task's thinking by the same factor. Fragility-aware batching saves 43% of tokens at unchanged accuracy.">
+<meta name="twitter:card" content="summary">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%231A1A1A'/><text x='8' y='12.5' font-size='12' font-weight='700' text-anchor='middle' font-family='monospace' fill='%23E6B33D'>%23</text></svg>">
+<title>When Tasks Compete for Tokens</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap">
+<style>
+/* One 680px monospace column read like a rendered markdown file; colour only where it means something. */
+:root {
+  --bg: #FBFAF7; --fg: #1A1A1A; --muted: #707070; --deco: #8A8A8A; --faint: #DCD9D2; --wash: #F1EFE9; --box: #D3D0C8;
+  --red: #C8413F; --yellow: #E6B33D; --blue: #2F6FB0;
+  --code: #F3F1EC; --syn-red: #B5544F; --syn-yellow: #9A7A2E; --syn-blue: #3F6F9E;
+  --mono: "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111111; --fg: #E6E6E6; --muted: #8A8A8A; --deco: #8A8A8A; --deco: #8A8A8A; --faint: #2C2C2C; --wash: #1A1A1A; --box: #3B3B3B;
+    --red: #E2625F; --yellow: #F1C557; --blue: #5B96D8; --code: #191919; --syn-red: #D37571; --syn-yellow: #D9B35E; --syn-blue: #7FA6CF; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111111; --fg: #E6E6E6; --muted: #8A8A8A; --deco: #8A8A8A; --faint: #2C2C2C; --wash: #1A1A1A; --box: #3B3B3B;
+  --red: #E2625F; --yellow: #F1C557; --blue: #5B96D8; --code: #191919; --syn-red: #D37571; --syn-yellow: #D9B35E; --syn-blue: #7FA6CF; color-scheme: dark;
+}
+
+body { background: var(--bg); color: var(--fg); font: 15px/1.6 var(--mono); -webkit-font-smoothing: antialiased; --lh: 24px; }
+::selection { background: var(--yellow); color: #1A1A1A; }
+.col { position: relative; max-width: 680px; margin: 0 auto; padding-inline: 16px; padding-block: 64px 80px; box-sizing: content-box; }
+p { margin: 0 0 calc(var(--lh) * 0.66); }
+b, strong { font-weight: 700; }
+em { font-style: italic; }
+a { color: inherit; text-decoration: none; }
+a:focus-visible, button:focus-visible, select:focus-visible, summary:focus-visible { outline: 1px dashed var(--fg); outline-offset: 3px; }
+.l::before { content: "["; color: var(--deco); }
+.l::after { content: "]"; color: var(--deco); }
+.l:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+.m { color: var(--deco); font-weight: 400; }
+code { font: inherit; background: var(--wash); padding: 0 3px; }
+sup { font-size: 0.68em; line-height: 0; }
+
+/* header */
+h1 { font-size: 24px; line-height: 1.4; font-weight: 700; margin: 0 0 20px; text-wrap: balance; }
+.authors { margin: 0 0 2px; }
+.affil { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0 0 22px; }
+.links .l { padding: 1px 2px; transition: background .15s, color .15s; }
+.links .l:hover { background: var(--fg); color: var(--bg); text-decoration: none; }
+.links .l:hover::before, .links .l:hover::after { color: var(--bg); }
+.lede { margin: 0 0 28px; padding: 14px 18px; border-radius: 8px;
+  background: color-mix(in srgb, var(--blue) 9%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--blue) 28%, var(--bg)); }
+.rule { overflow: hidden; white-space: nowrap; color: var(--muted); opacity: .55; line-height: 1; margin: calc(var(--lh) * 2.5) 0 0; user-select: none; }
+.rule + section { margin-top: calc(var(--lh) * 2.5); }
+.rule::before { content: "────────────────────────────────────────────────────────────────────────────────────────────────────"; }
+
+h2 { font-size: 16px; line-height: 1.45; font-weight: 700; margin: 0 0 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 16px; text-wrap: balance; }
+h2 > span:first-child { padding-left: 6ch; text-indent: -6ch; }
+h2 .up { font-size: 12px; font-weight: 400; color: var(--muted); white-space: nowrap; }
+h2 .up:hover { color: var(--fg); }
+@media (hover: hover) { h2 .up { opacity: 0; transition: opacity .15s; } h2:hover .up, h2 .up:focus-visible { opacity: 1; } }
+.index { font-size: 13px; color: var(--muted); }
+.index h2 { font-size: 13px; margin-bottom: 6px; }
+.index a:hover { color: var(--fg); }
+.index ol { list-style: none; padding: 0; margin: 0; counter-reset: i; }
+.index li { counter-increment: i; }
+.index li::before { content: counter(i) ". "; color: var(--muted); }
+section { margin-top: calc(var(--lh) * 4.5); scroll-margin-top: 28px; }
+section[data-sec] > h2 { font-size: 19px; line-height: 1.4; margin-bottom: 20px; }
+
+/* markdown-ish devices */
+blockquote { position: relative; margin: 22px 0; padding-left: 2.2ch; }
+blockquote::before { content: ">"; position: absolute; left: 0; top: 0; color: var(--deco); }
+blockquote::after { content: ""; position: absolute; left: 0.3ch; top: 1.7em; bottom: 0.3em; border-left: 1px solid var(--faint); }
+.key { border-left: 2px solid var(--fg); padding-left: 2ch; margin-block: var(--lh); }
+.hl { background: var(--yellow); color: #1A1A1A; padding: 0 0.25ch; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.hi, .lo { font-weight: 700; cursor: default; }
+.hi { color: var(--red); }
+.lo { color: var(--blue); }
+.bulb { display: inline-block; vertical-align: -2px; margin-right: 2px; }
+.bulb-glass { fill: var(--yellow); stroke: var(--fg); stroke-width: 1.2; stroke-linejoin: round; }
+.bulb-base { fill: none; stroke: var(--fg); stroke-width: 1.2; stroke-linecap: round; }
+.tok { background: color-mix(in srgb, var(--yellow) 32%, transparent); padding: 0 0.3ch; }
+.fn { color: var(--fg); font-size: 0.7em; vertical-align: super; line-height: 0; padding-left: 1px; }
+
+/* margin notes: in the right margin on wide screens, under their paragraph otherwise */
+.sn { font-size: 12px; line-height: 1.55; color: var(--muted); margin: -6px 0 14px; padding-left: 2.2ch; position: relative; }
+.sn > sup:first-child { position: absolute; left: 0; top: 0.75em; color: var(--fg); }
+.sn b { color: var(--fg); }
+.sn, .fn { transition: color .15s; }
+.sn.lit { color: var(--fg); }
+.fn.lit { background: color-mix(in srgb, var(--yellow) 32%, transparent); }
+@media (min-width: 1200px) {
+  .sn { position: absolute; left: calc(100% + 40px); width: 200px; margin: 0; opacity: .55; transition: opacity .15s, color .15s; }
+  .sn.lit, .sn:hover { opacity: 1; }
+}
+
+/* section rail */
+.rail { opacity: 0; pointer-events: none; transition: opacity .25s; }
+.rail.live { opacity: 1; pointer-events: auto; }
+.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 340px - 52px); height: min(300px, 48vh); flex-direction: column; gap: 8px; z-index: 2; }
+@media (min-width: 1200px) { .rail { display: flex; } }
+.rail a { flex: 1; position: relative; width: 22px; }
+.rail i { position: absolute; top: 0; bottom: 0; left: 10px; width: 1px; background: var(--faint); transition: width .18s ease-out, left .18s ease-out, background .18s ease-out; }
+.rail a:hover i { width: 2px; left: 9.5px; background: var(--muted); }
+.rail a.on i { width: 3px; left: 9px; background: var(--fg); }
+.rail a.on:hover i { width: 4px; left: 8.5px; }
+.rail span { position: absolute; right: 30px; top: -2px; width: 180px; text-align: right; font-size: 11px; line-height: 1.45; color: var(--deco); transition: color .18s; }
+.rail span b { display: block; font-weight: 400; color: var(--muted); }
+.rail a:hover span, .rail a.on span { color: var(--fg); }
+
+/* figures */
+figure { margin: var(--lh) 0 0; }
+.frame { position: relative; border: 1px solid var(--faint); border-radius: 6px; padding: 18px 18px 34px; }
+.replay { position: absolute; right: 8px; bottom: 6px; font: 12px var(--mono); color: var(--muted); background: none; border: 0; padding: 2px 4px; cursor: pointer; }
+.replay:hover { color: var(--fg); }
+figcaption { font-size: 13px; line-height: 1.55; color: var(--muted); margin-top: 10px; }
+figcaption .fl { color: var(--fg); }
+.flags { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px 18px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.flags label { white-space: nowrap; }
+.flags select { appearance: none; -webkit-appearance: none; background: transparent; border: 0; border-bottom: 1px solid transparent; border-radius: 0; color: var(--fg); font: inherit; padding: 0 1px; cursor: pointer; }
+.flags select:hover { border-bottom-color: currentColor; }
+.flags option { background: var(--bg); color: var(--fg); }
+.note { font-size: 12px; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12px; color: var(--muted); }
+.fighead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 20px; margin-bottom: 8px; }
+.fighead .flags { margin: 0; }
+.legend i { display: inline-block; width: 9px; height: 9px; margin-right: 6px; vertical-align: -0.5px; }
+.sw-high { background: var(--red); } .sw-medium { background: var(--yellow); } .sw-low { background: var(--blue); }
+
+/* fig 1: terminal */
+.term { font-size: 14px; line-height: 1.75; }
+.term .ln { white-space: pre-wrap; overflow-wrap: anywhere; }
+.term .pr { color: var(--muted); }
+.term .res i { font-style: normal; display: inline-block; }
+.term .gap { height: 0.85em; }
+.term .ig { display: inline-block; }
+.ok { color: var(--blue); font-weight: 700; }
+.bad { color: var(--red); font-weight: 700; }
+.term .cm { color: var(--muted); }
+
+/* charts */
+.plot { position: relative; }
+.plot svg { display: block; overflow: visible; }
+.plot .grid { stroke: var(--faint); stroke-width: 1; }
+.plot .ax, .plot .tick { stroke: var(--muted); stroke-width: 1; }
+.plot .tk, .plot .al { fill: var(--muted); font: 11px var(--mono); }
+.plot .lab { fill: var(--fg); font: 11px var(--mono); }
+.plot .one { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 1 4; stroke-linecap: round; }
+.plot .zero { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.s-high { stroke: var(--red); } .s-medium { stroke: var(--yellow); } .s-low { stroke: var(--blue); }
+.p-high { fill: var(--red); } .p-medium { fill: var(--yellow); } .p-low { fill: var(--blue); }
+.plot .fit, .plot .path { fill: none; stroke-width: 2; stroke-linecap: round; }
+.plot .path { stroke-width: 1.5; }
+.plot .pt { stroke: var(--bg); stroke-width: 1.5; }
+.plot .pt0 { fill: var(--fg); stroke: var(--bg); stroke-width: 1.5; }
+.tip { position: absolute; pointer-events: none; font-size: 11px; line-height: 1.4; background: var(--bg); border: 1px solid var(--faint); padding: 2px 7px; white-space: nowrap; transform: translate(-50%, calc(-100% - 10px)); }
+.readout { font-size: 12px; color: var(--muted); margin-top: 6px; min-height: 1.6em; }
+.readout b { color: var(--fg); }
+
+/* fig 3 */
+.bars .bar { fill: var(--box); }
+.bars .ghost { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.bars .need { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 2 2; }
+.bars .slack { fill: var(--blue); }
+.bars .deficit { fill: var(--red); }
+.bars .rowlab { fill: var(--fg); font: 12px var(--mono); }
+.bars .hint { fill: var(--muted); font: 11px var(--mono); }
+.bars .mk-ok { fill: var(--blue); font: 700 14px var(--mono); }
+.bars .mk-bad { fill: var(--red); font: 700 14px var(--mono); }
+.comment { font-size: 13px; color: var(--muted); margin-top: 8px; }
+
+/* fig 4 */
+.switch { display: flex; gap: 10px; justify-content: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.switch button { font: inherit; color: var(--muted); background: none; border: 0; padding: 0 0 2px; cursor: pointer; border-bottom: 1px solid transparent; }
+.switch button.on { color: var(--fg); border-bottom-color: var(--fg); }
+.switch button:hover { color: var(--fg); }
+.stage { position: relative; height: 116px; }
+.stage .status { position: absolute; left: 0; top: 0; font-size: 12px; color: var(--muted); }
+.stage .scan { position: absolute; top: 40px; height: 56px; width: 1.5px; background: var(--fg); opacity: 0; }
+.b4 { position: absolute; top: 50px; height: 36px; }
+.b4 .fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--box); overflow: hidden; }
+.b4 .tint { position: absolute; inset: 0; opacity: 0; }
+.b4 .tint.r { background: var(--red); } .b4 .tint.b { background: var(--blue); }
+.b4 .ghost { position: absolute; inset: 0; border: 1px dashed var(--muted); opacity: 0; box-sizing: border-box; }
+.mk4 { position: absolute; top: 25px; width: 24px; margin-left: -12px; text-align: center; font-size: 14px; line-height: 20px; font-weight: 700; }
+.mk4.neutral { color: var(--fg); font-weight: 400; }
+.lb4 { position: absolute; top: 94px; width: 32px; margin-left: -16px; text-align: center; font-size: 12px; color: var(--muted); }
+.brk { position: absolute; top: 44px; height: 48px; color: var(--muted); opacity: 0;
+  background:
+    linear-gradient(currentColor, currentColor) left top / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) left bottom / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) right bottom / 7px 1.5px no-repeat,
+    linear-gradient(currentColor, currentColor) left top / 1.5px 100% no-repeat,
+    linear-gradient(currentColor, currentColor) right top / 1.5px 100% no-repeat; }
+.counter { font-size: 13px; margin-top: 12px; display: flex; gap: 22px; flex-wrap: wrap; }
+.counter .tokdot { display: inline-block; width: 8px; height: 8px; background: var(--yellow); margin-right: 7px; vertical-align: 0; }
+
+/* details and table */
+details { margin-top: 14px; }
+summary { list-style: none; cursor: pointer; font-size: 13px; color: var(--muted); width: fit-content; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▸ "; }
+details[open] > summary::before { content: "▾ "; }
+summary:hover { color: var(--fg); }
+details > .inner { margin-top: 12px; }
+.tablebox { overflow-x: auto; border: 1px solid var(--faint); border-radius: 6px; margin-top: 6px;
+  background:
+    linear-gradient(to right, var(--bg) 40%, transparent) left / 28px 100% no-repeat local,
+    linear-gradient(to left, var(--bg) 40%, transparent) right / 28px 100% no-repeat local,
+    linear-gradient(to right, color-mix(in srgb, var(--fg) 14%, transparent), transparent) left / 12px 100% no-repeat scroll,
+    linear-gradient(to left, color-mix(in srgb, var(--fg) 14%, transparent), transparent) right / 12px 100% no-repeat scroll; }
+.scrollhint { font-size: 12px; color: var(--muted); margin: 8px 0 0; }
+table { border-collapse: collapse; font-size: 12px; line-height: 1.5; font-variant-numeric: tabular-nums; white-space: nowrap; width: 100%; }
+th, td { padding: 4px 10px; text-align: left; }
+thead th { font-weight: 400; color: var(--muted); border-bottom: 1px solid var(--faint); }
+thead tr:first-child th { padding-top: 8px; }
+td small { font-size: 11px; color: var(--muted); }
+td.neg, td.neg small { color: var(--red); }
+tr.avg td { font-weight: 700; border-top: 1px solid var(--faint); }
+tr.grey td, tr.grey td small { color: var(--muted); }
+td.sep, th.sep { border-left: 1px solid var(--faint); }
+.tnotes { font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+/* closing and footer */
+.closing { margin-top: calc(var(--lh) * 2); }
+pre.bib { position: relative; margin: 0; font: 12.5px/1.65 var(--mono); color: var(--fg); background: var(--code); border: 1px solid var(--faint); border-radius: 6px; padding: 16px 18px; overflow-x: auto; }
+.sy-r { color: var(--syn-red); } .sy-y { color: var(--syn-yellow); } .sy-b { color: var(--syn-blue); }
+@media (max-width: 520px) { pre.bib { padding-top: 32px; } }
+.copy { position: absolute; top: 8px; right: 10px; font: 12px var(--mono); color: var(--muted); background: none; border: 0; cursor: pointer; padding: 2px 4px; }
+.copy:hover { color: var(--fg); }
+.foot { font-size: 12px; line-height: 1.6; color: var(--muted); margin-top: var(--lh); }
+.foot p { margin: 0 0 8px; }
+
+/* hovering a coloured keyword picks out the matching marks in every figure */
+[data-g] { transition: opacity .2s ease-out; }
+body[data-focus="high"] [data-g]:not([data-g="high"]),
+body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; }
+
+@media (max-width: 520px) {
+  .col { padding-block: 40px 64px; }
+  .frame { padding: 14px 12px 32px; }
+  .term { font-size: 12px; }
+  h2 { flex-wrap: wrap; gap: 4px 16px; }
+  section[data-sec] > h2 { margin-bottom: 12px; }
+  h2 .up { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-g], .rail i, .rail span { transition: none; }
+}
+@media print {
+  .rail, .replay, .copy, .flags, .switch { display: none !important; }
+  .frame { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<nav class="rail" aria-label="Sections">
+  <a href="#s1" data-s="s1"><i></i><span><b>1</b>What is compositional degradation?</span></a>
+  <a href="#s2" data-s="s2"><i></i><span><b>2</b>What does implicit budgeting look like?</span></a>
+  <a href="#s3" data-s="s3"><i></i><span><b>3</b>What tasks fail under composition?</span></a>
+  <a href="#s4" data-s="s4"><i></i><span><b>4</b>Exploiting implicit budgeting for efficient inference</span></a>
+</nav>
+
+<main class="col" id="top">
+  <header>
+    <h1><span class="m">#</span> On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models</h1>
+    <p class="authors">Chenpan Li<sup>1*</sup>, Thies Brockmöller<sup>1</sup>, Stefanie Jegelka<sup>1,2</sup>, Sharut Gupta<sup>2◇</sup>, Nikolaos Karalias<sup>2◇</sup></p>
+    <p class="affil"><sup>1</sup> Technical University of Munich · <sup>2</sup> MIT · * correspondence · ◇ equal advisory roles</p>
+    <nav class="links" aria-label="Paper links">
+      <a class="l todo" href="#">paper</a>
+      <a class="l todo" href="#">arXiv</a>
+      <a class="l todo" href="#">code</a>
+      <a class="l todo" href="#">data</a>
+      <a class="l" href="#cite">bibtex</a>
+    </nav>
+    <p class="lede">When a prompt combines many tasks, language models often think too little about the difficult ones and fail. Our work shows the cause is <mark class="hl">insufficient reasoning effort</mark>, not missing skills.</p>
+
+    <div class="index" id="index">
+      <h2><span><span class="m">##</span> index</span></h2>
+      <ol>
+        <li><a class="l" href="#s1">the contradiction</a></li>
+        <li><a class="l" href="#s2">every task gets less thinking</a></li>
+        <li><a class="l" href="#s3">fragile tasks</a></li>
+        <li><a class="l" href="#s4">batching by fragility</a></li>
+        <li><a class="l" href="#cite">cite</a></li>
+      </ol>
+    </div>
+  </header>
+  <div class="rule" aria-hidden="true"></div>
+
+  <!-- 1 -->
+  <section id="s1" data-sec>
+    <h2><span><span class="m">##</span> 1&nbsp; composing tasks causes performance degradation</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>A <em>composition</em> is built from several independent constituent tasks, which are pasted into one prompt and answered in order. We keep only tasks a model solves in 3 out of 3 isolated attempts, then compose them. Even for these reliably solved tasks, an accuracy drop shows up for all tested models across math and language datasets.<span class="fn" data-fn="1">1</span><span class="fn">,</span><span class="fn" data-fn="2">2</span></p>
+    <aside class="sn" data-for="1"><sup>1</sup>It is not error accumulation. If composition had no effect, we would expect the accuracy drop to be close to 0.</aside>
+    <aside class="sn" data-for="2"><sup>2</sup>Nor is it context length. Most responses use under 25% of the context window, and in most datasets fewer than 1% hit the limit.</aside>
+
+    <figure id="fig1">
+      <div class="frame" aria-label="Animated terminal. Three integrals, 3x squared, 2 sin(4x+1) and x e to the 2x, are each solved in 3 of 3 attempts alone. Merged into one integral of their sum, terms 1 and 2 are solved and term 3 fails.">
+        <div class="term" id="term">
+          <div class="ln" data-l="0"><span class="pr">$</span> solve "∫ 3x² dx"             <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="ln" data-l="1"><span class="pr">$</span> solve "∫ 2·sin(4x+1) dx"     <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="ln" data-l="2"><span class="pr">$</span> solve "∫ x·e^(2x) dx"         <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
+          <div class="gap"></div>
+          <div class="ln merged"><span class="pr">$</span> solve "∫ <span class="ig">3x²</span><span class="pl"> + </span><span class="ig">2·sin(4x+1)</span><span class="pl"> + </span><span class="ig">x·e^(2x)</span> dx"</div>
+          <div class="ln think m">thinking <span class="dots">···</span></div>
+          <div class="ln out"><span class="o">term 1 <span class="ok">✓</span></span>   <span class="o">term 2 <span class="ok">✓</span></span>   <span class="o">term 3 <span class="bad">✗</span></span></div>
+          <div class="ln cm"># each term: 3/3 separately. in composition: 2/3.
+<span class="bad" style="font-weight:400"># why is that?</span></div>
+        </div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 1 ─</span> Each integral is solved in 3 of 3 attempts alone, but composing them (i.e. summing them) causes failures.</figcaption>
+    </figure>
+
+    <blockquote>If a model can solve every constituent task alone, why does it fail a composition of them, and what mechanism drives it?</blockquote>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2" data-sec>
+    <h2><span><span class="m">##</span> 2&nbsp; degradation as a misallocation of the implicit thinking budget</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>To observe how thinking tokens are distributed, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) measures how much of the thinking tokens used in isolation remains when the task is placed in a composition of k tasks.</p>
+    <p>It falls as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. In plain terms, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
+    <p class="key">Under composition, LLMs cut the thinking tokens of every task by roughly the same proportion, a factor of k<sup>m</sup>.<span class="fn" data-fn="3">3</span></p>
+    <aside class="sn" data-for="3"><sup>3</sup>The model does this voluntarily. The prompt sets no per-task limit and the context window is far from full, so the model rations on its own.</aside>
+
+    <figure id="fig2">
+      <div class="frame" aria-label="Log-log chart of token ratio against tasks per composition. For every model and dataset the three length bins fall along straight lines through (1, 1), the power law r approximately k to the m.">
+        <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>--dataset [<select id="f2-dataset" data-flag="dataset"></select> ▾]</label><label>--model [<select id="f2-model" data-flag="model"></select> ▾]</label></div></div>
+        <div class="plot" id="pplot"><svg role="img" aria-label="Token ratio by composition size"></svg><div class="tip" hidden></div></div>
+        <div class="readout" id="preadout"></div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 2 ─</span> Thinking per task relative to solving it alone. Lines bin tasks by the thinking tokens they use in isolation (red long, yellow medium, blue short). Line: fitted k<sup>m</sup>.</figcaption>
+    </figure>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3" data-sec>
+    <h2><span><span class="m">##</span> 3&nbsp; some tasks can afford it, some can't</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p>The same reduction causes highly uneven degradation. <span class="hi" data-focus="high">High-effort</span> tasks, the ones with long thinking traces alone, lose the most accuracy.<span class="fn" data-fn="4">4</span> We call these tasks <span class="hi" data-focus="high">fragile</span>, whereas tasks that are robust to this reduction we call <span class="lo" data-focus="low">non-fragile</span>, since they show almost no degradation.<span class="fn" data-fn="5">5</span><span class="fn">,</span><span class="fn" data-fn="6">6</span></p>
+    <aside class="sn" data-for="4"><sup>4</sup>An analogous effect arises when a solo task is forced to stop thinking at its composed budget.</aside>
+    <aside class="sn" data-for="5"><sup>5</sup>Q: Why is the degradation so uneven? A: Short traces carry slack, more thinking than the task needs. High-effort tasks are more vulnerable because they actually need that many thinking tokens to be solved.</aside>
+    <aside class="sn" data-for="6"><sup>6</sup>Fragility is a stable property of a task for a given model: the same tasks fail across composition sizes and orderings (correlation <b>0.81</b>), whereas different models break on different tasks (<b>0.24</b>).</aside>
+    <p class="key">Modern LLMs mostly solve difficult tasks in isolation without trouble. Given a composition, however, they fail to assign each task the thinking budget it needs, so the most difficult constituent tasks fail first.</p>
+
+    <figure id="fig3">
+      <div class="frame" aria-label="Three bars show the thinking each integral gets alone, with a dashed tick for the thinking it needs. All bars shrink by the same factor. Terms 1 and 2 still clear their ticks; term 3 falls short and fails.">
+        <div class="plot bars" id="bplot"><svg role="img" aria-label="Same cut, different slack"></svg></div>
+        <div class="comment" id="bcomment"># <span class="hi" data-focus="high" style="font-weight:400">high-effort</span> tasks fail earlier under composition</div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 3 ─</span> Same cut, different slack. Every trace shrinks by the same factor k<sup>m</sup>, and only term 3 drops below the thinking it needs.</figcaption>
+    </figure>
+
+    <details id="evidence">
+      <summary>the evidence: accuracy drop vs token reduction (paper fig. 5)</summary>
+      <div class="inner">
+        <figure style="margin:0">
+          <div class="frame" style="padding-bottom:18px" aria-label="Accuracy change against token reduction per length bin. Long-thinking tasks lose the most accuracy as the reduction grows.">
+            <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>--dataset [<select id="f5-dataset" data-flag="dataset"></select> ▾]</label><label>--model [<select id="f5-model" data-flag="model"></select> ▾]</label></div></div>
+            <div class="plot" id="eplot"><svg role="img" aria-label="Accuracy change against token reduction"></svg><div class="tip" hidden></div></div>
+          </div>
+          <figcaption><span class="fl">fig. 3b ─</span> Accuracy change of tasks solved 3 of 3 times alone, against the share of thinking that composition removed. Each point is one composition size k; bins as in fig. 2.</figcaption>
+        </figure>
+      </div>
+    </details>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4" data-sec>
+    <h2><span><span class="m">##</span> 4&nbsp; exploiting implicit budgeting for efficient inference</span><a class="up" href="#index">[↑ index]</a></h2>
+    <p><svg class="bulb" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5a4.6 4.6 0 0 0-2.7 8.3c.5.4.8 1 .8 1.6v.6h3.8v-.6c0-.6.3-1.2.8-1.6A4.6 4.6 0 0 0 8 1.5z" class="bulb-glass"/><path d="M6.2 13.6h3.6M6.7 15h2.6" class="bulb-base"/></svg> <b>Fragility-aware batching.</b> The composition size k controls how much thinking each task gets. So put <span class="lo" data-focus="low">non-fragile</span> tasks into large batches to save tokens, and keep <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</p>
+    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy unchanged (+0.6 pp). Random batching saves more tokens in the end, but in most cases it comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing only 0.4 pp. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
+
+    <figure id="fig4">
+      <div class="frame" aria-label="Six tasks, two of them twice as wide because they think longer. Random batching into two prompts of three cuts every task to 55 percent and the two wide tasks fail: tokens minus 45 percent, 4 of 6 correct. Fragility-aware batching puts the four narrow tasks together and the two wide ones together; narrow tasks shrink to 47 percent, wide ones to 69 percent, and all six are solved: tokens minus 42 percent, 6 of 6 correct.">
+        <div class="switch" role="group" aria-label="Show method">
+          <button type="button" data-scene="random">random batching</button><span aria-hidden="true">·</span><button type="button" data-scene="aware">fragility-aware</button>
+        </div>
+        <div class="stage" id="stage"></div>
+        <div class="counter"><span>tokens <b id="ctok" class="tok">100%</b></span><span>correct <b id="ccor">6/6</b></span></div>
+        <div class="comment" id="scomment"># batching by fragility avoids tasks failing due to implicit budgeting while still allowing substantial savings</div>
+        <button class="replay" type="button">[↻ replay]</button>
+      </div>
+      <figcaption><span class="fl">fig. 4 ─</span> Toy example with six tasks; savings follow approximately a power law. Fragility-aware batching: 43% fewer tokens at unchanged accuracy across datasets.</figcaption>
+    </figure>
+
+    <details id="full">
+      <summary>full results: all models × datasets (paper Table 2)</summary>
+      <div class="inner">
+        <div class="flags" style="justify-content:flex-start;margin:0">
+          <label>--dataset [<select id="t-dataset"></select> ▾]</label>
+        </div>
+        <p class="scrollhint" aria-hidden="true">scroll sideways for all four policies →</p>
+        <div class="tablebox"><table id="rtable"></table></div>
+        <p class="tnotes" id="tnotes"></p>
+      </div>
+    </details>
+
+    <div class="rule" aria-hidden="true"></div>
+    <div class="closing">
+      <p><b>Implicit budgeting in LLMs acts as a <mark class="hl">double-edged sword</mark>.</b> Under composition, <span class="hi" data-focus="high">fragile</span> tasks receive too little reasoning and fail. In isolation, <span class="lo" data-focus="low">non-fragile</span> tasks receive more reasoning than they need and waste compute.</p>
+      <p>Future training should fix budgeting, for example through post-training. For current models, we show that regrouping tasks already brings large benefits.</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="cite">
+    <h2><span><span class="m">##</span> 5&nbsp; cite</span><a class="up" href="#index">[↑ index]</a></h2>
+<pre class="bib" id="bib"><button class="copy" type="button" id="copy">[copy]</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
+  <span class="sy-b">title</span>     = {On the Fragility of Tasks under Composition:
+               Implicit Budgeting in Language Models},
+  <span class="sy-b">author</span>    = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and
+               Gupta, Sharut and Karalias, Nikolaos},
+  <span class="sy-b">year</span>      = {2026},
+}</code></pre>
+    <div class="foot">
+      <p>Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
+      <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
+    </div>
+  </section>
+</main>
+
+<script type="application/json" id="figdata">{"fig2":{"gpqa-diamond":{"qwen3-14b":{"m":-0.561,"r2":0.972,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.7239,0.5663,0.4599,0.343,0.2566,0.2105],"m":-0.624},"low":{"k":[2,3,4,6,8,10],"r":[0.7402,0.6609,0.5224,0.4393,0.3734,0.3283],"m":-0.465},"medium":{"k":[2,3,4,6,8,10],"r":[0.7383,0.5675,0.4789,0.3691,0.2955,0.2377],"m":-0.577}}},"qwen3-4b-thinking":{"m":-0.585,"r2":0.886,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.9278,0.5289,0.4291,0.3207,0.2504,0.1971],"m":-0.643},"low":{"k":[2,3,4,6,8,10],"r":[0.9228,0.5005,0.3716,0.3229,0.2641,0.2481],"m":-0.62},"medium":{"k":[2,3,4,6,8,10],"r":[0.9233,0.5357,0.4509,0.4169,0.2806,0.2371],"m":-0.57}}},"qwen3-8-27b":{"m":-0.108,"r2":0.726,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.9071,0.7064,0.6722,0.5904,0.529,0.5089],"m":-0.293},"low":{"k":[2,3,4,6,8,10],"r":[0.6531,0.5764,0.5639,0.57,0.4674,0.4762],"m":-0.364},"medium":{"k":[2,3,4,6,8,10],"r":[0.9,0.8264,0.8029,0.7331,0.6867,0.6562],"m":-0.176}}},"qwen3-8b":{"m":-0.56,"r2":0.974,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.7448,0.5509,0.4503,0.3224,0.246,0.1942],"m":-0.65},"low":{"k":[2,3,4,6,8,10],"r":[0.8336,0.6222,0.5313,0.4564,0.3742,0.3347],"m":-0.456},"medium":{"k":[2,3,4,6,8,10],"r":[0.7383,0.5742,0.4707,0.3648,0.308,0.2533],"m":-0.564}}},"r1-llama-distill-8b":{"m":-0.745,"r2":0.975,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.5237,0.3895,0.2981,0.2188,0.151,0.1126],"m":-0.903},"low":{"k":[2,3,4,6,8,10],"r":[0.501,0.4395,0.3369,0.2723,0.1924,0.1597],"m":-0.783},"medium":{"k":[2,3,4,6,8,10],"r":[0.5656,0.4277,0.3183,0.241,0.1724,0.1433],"m":-0.827}}},"r1-qwen-distill-7b":{"m":-0.717,"r2":0.962,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.5884,0.3814,0.2924,0.1916,0.1324,0.0837],"m":-0.973},"low":{"k":[2,3,4,6,8,10],"r":[0.5948,0.4358,0.3742,0.3305,0.2422,0.2329],"m":-0.664},"medium":{"k":[2,3,4,6,8,10],"r":[0.6347,0.41,0.3304,0.2157,0.1779,0.1348],"m":-0.838}}},"r1-qwen3-8b":{"m":-0.578,"r2":0.861,"bins":{"high":{"k":[2,3,4,6,8,10],"r":[0.9254,0.6735,0.5093,0.3859,0.2865,0.2596],"m":-0.537},"low":{"k":[2,3,4,6,8,10],"r":[0.9606,0.6506,0.4221,0.3233,0.2614,0.2539],"m":-0.588},"medium":{"k":[2,3,4,6,8,10],"r":[0.9821,0.6449,0.4703,0.3151,0.2822,0.2292],"m":-0.586}}}},"gsm8k":{"qwen3-14b":{"m":-0.448,"r2":0.92,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5848,0.5,0.4584,0.4163,0.3831,0.3373,0.3127,0.2703,0.2576,0.2334],"m":-0.486},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6403,0.5441,0.4822,0.4508,0.4147,0.384,0.3623,0.326,0.3045,0.2886],"m":-0.427},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6245,0.5367,0.4665,0.4302,0.3944,0.3579,0.3355,0.3037,0.2761,0.2628],"m":-0.456}}},"qwen3-4b-thinking":{"m":-0.481,"r2":0.997,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6746,0.5779,0.5053,0.4003,0.3507,0.3141,0.2819,0.2471,0.2273,0.2119],"m":-0.511},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.8264,0.606,0.5403,0.4282,0.3757,0.354,0.3368,0.3113,0.2957,0.2825],"m":-0.437},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6898,0.5586,0.4891,0.3916,0.3424,0.3079,0.2869,0.2605,0.2459,0.2326],"m":-0.501}}},"qwen3-8-27b":{"m":-0.079,"r2":0.649,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7235,0.6631,0.6156,0.5735,0.5467,0.5231,0.5273,0.5218,0.5413,0.5285],"m":-0.257},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[1.0344,0.9444,0.8852,0.8125,0.7605,0.728,0.6984,0.6841,0.6539,0.6314],"m":-0.135},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7388,0.675,0.6437,0.5913,0.5529,0.5364,0.517,0.5132,0.494,0.4857],"m":-0.265}}},"qwen3-8b":{"m":-0.448,"r2":0.998,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6907,0.6036,0.5578,0.4518,0.4007,0.3482,0.3296,0.2869,0.2699,0.2411],"m":-0.456},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7433,0.5933,0.5333,0.4336,0.4015,0.3617,0.3428,0.3202,0.2992,0.2851],"m":-0.431},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.709,0.5813,0.5258,0.419,0.3778,0.3331,0.3145,0.2868,0.2641,0.2548],"m":-0.466}}},"r1-llama-distill-8b":{"m":-0.423,"r2":0.922,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6317,0.5297,0.498,0.4268,0.3813,0.3805,0.3789,0.3129,0.292,0.3109],"m":-0.43},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5651,0.5027,0.402,0.3393,0.3094,0.2839,0.2611,0.3097,0.2256,0.243],"m":-0.523},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5838,0.4994,0.4319,0.3689,0.3381,0.3217,0.312,0.2886,0.2772,0.2654],"m":-0.484}}},"r1-qwen-distill-7b":{"m":-0.464,"r2":0.778,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6078,0.4702,0.3832,0.3355,0.3031,0.2703,0.2565,0.2786,0.2443,0.2744],"m":-0.523},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5487,0.4494,0.3635,0.3035,0.2747,0.2586,0.2388,0.2315,0.2221,0.2325],"m":-0.568},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5867,0.4457,0.401,0.3255,0.3076,0.3019,0.2579,0.2619,0.3007,0.2597],"m":-0.513}}},"r1-qwen3-8b":{"m":-0.649,"r2":0.846,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7465,0.6581,0.588,0.5013,0.4452,0.4033,0.3724,0.3314,0.3127,0.2931],"m":-0.4},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3846,0.3009,0.2476,0.1952,0.1742,0.1508,0.1392,0.1284,0.1257,0.1124],"m":-0.8},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4191,0.3357,0.2858,0.2253,0.1956,0.1748,0.1635,0.147,0.1365,0.1329],"m":-0.743}}}},"integrals":{"qwen3-14b":{"m":-0.73,"r2":0.686,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5839,0.4726,0.4118,0.3636,0.305,0.2793,0.2628,0.223,0.2063,0.194],"m":-0.561},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4652,0.3747,0.3255,0.2806,0.2363,0.2114,0.1949,0.1729,0.1645,0.1546],"m":-0.669},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.454,0.3567,0.312,0.2663,0.2303,0.2038,0.1895,0.1692,0.1527,0.144],"m":-0.689}}},"qwen3-4b-thinking":{"m":-0.432,"r2":0.997,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7679,0.6852,0.6583,0.58,0.5272,0.468,0.4502,0.3986,0.3821,0.3525],"m":-0.33},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5584,0.4258,0.3786,0.3084,0.2682,0.252,0.2355,0.2155,0.2091,0.2035],"m":-0.587},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5928,0.4997,0.4621,0.3758,0.3251,0.2939,0.2726,0.2434,0.2284,0.2124],"m":-0.53}}},"qwen3-8-27b":{"m":-0.182,"r2":0.985,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.8609,0.8802,0.846,0.8577,0.8149,0.8097,0.7948,0.7783,0.7474,0.7498],"m":-0.098},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.532,0.4783,0.449,0.3848,0.35,0.3287,0.3132,0.3046,0.3059,0.3087],"m":-0.462},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5748,0.5347,0.4957,0.4555,0.4257,0.409,0.3929,0.3862,0.3758,0.3702],"m":-0.381}}},"qwen3-8b":{"m":-0.72,"r2":0.895,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5921,0.4902,0.423,0.344,0.2868,0.2368,0.2206,0.1949,0.1718,0.1641],"m":-0.61},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3695,0.3053,0.2546,0.1997,0.1754,0.1524,0.1442,0.1259,0.1144,0.1057],"m":-0.807},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3685,0.3047,0.2589,0.2024,0.1771,0.1522,0.1421,0.1247,0.1133,0.1034],"m":-0.809}}},"r1-llama-distill-8b":{"m":-0.776,"r2":0.057,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3171,0.2881,0.2515,0.2141,0.195,0.169,0.1688,0.1627,0.1441,0.1381],"m":-0.744},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3327,0.2686,0.225,0.1814,0.1588,0.1452,0.1375,0.1264,0.116,0.114],"m":-0.822},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3474,0.2817,0.2414,0.2041,0.1814,0.1628,0.1586,0.1475,0.1407,0.1357],"m":-0.763}}},"r1-qwen-distill-7b":{"m":-0.732,"r2":0.623,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4614,0.3423,0.2866,0.227,0.1966,0.1601,0.159,0.1463,0.1326,0.1246],"m":-0.752},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3576,0.2755,0.2591,0.1806,0.162,0.1464,0.1417,0.1344,0.142,0.139],"m":-0.785},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3892,0.2948,0.245,0.1901,0.1752,0.1462,0.1455,0.1376,0.1366,0.1317],"m":-0.782}}},"r1-qwen3-8b":{"m":-0.713,"r2":0.983,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5304,0.4624,0.404,0.3379,0.2806,0.2358,0.2235,0.1983,0.1878,0.1748],"m":-0.605},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.2804,0.2054,0.1717,0.1156,0.0926,0.0772,0.0688,0.0584,0.0555,0.0534],"m":-1.084},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3573,0.2837,0.2388,0.1746,0.1392,0.1212,0.1092,0.0918,0.083,0.0787],"m":-0.908}}}},"math500":{"qwen3-14b":{"m":-0.421,"r2":0.875,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.674,0.5962,0.5715,0.5309,0.4802,0.4518,0.4364,0.4069,0.3791,0.377],"m":-0.345},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6378,0.5198,0.4916,0.3812,0.3245,0.3574,0.3062,0.2623,0.2616,0.2737],"m":-0.482},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6161,0.5287,0.4748,0.4256,0.3981,0.3684,0.3452,0.3173,0.2986,0.2886],"m":-0.44}}},"qwen3-4b-thinking":{"m":-0.409,"r2":0.948,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5835,0.5188,0.485,0.4396,0.42,0.3852,0.3733,0.3204,0.2884,0.2814],"m":-0.433},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7036,0.567,0.5178,0.4913,0.4137,0.4051,0.3358,0.3202,0.3091,0.273],"m":-0.424},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.631,0.5953,0.565,0.4919,0.4607,0.4095,0.3681,0.3281,0.2963,0.2864],"m":-0.41}}},"qwen3-8-27b":{"m":-0.066,"r2":0.916,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7773,0.7887,0.7917,0.7427,0.7451,0.7257,0.7441,0.7509,0.7468,0.7255],"m":-0.126},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7277,0.7288,0.7095,0.7835,0.6208,0.6021,0.5899,0.5744,0.5878,0.6007],"m":-0.201},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7395,0.7073,0.6751,0.6493,0.6276,0.6089,0.6299,0.6192,0.6015,0.6113],"m":-0.199}}},"qwen3-8b":{"m":-0.453,"r2":0.895,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6934,0.6207,0.5665,0.5106,0.4919,0.4479,0.43,0.392,0.3765,0.3623],"m":-0.351},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5661,0.4341,0.4097,0.3156,0.2856,0.2637,0.2493,0.2304,0.216,0.2022],"m":-0.57},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5905,0.4821,0.469,0.3874,0.3488,0.3218,0.3008,0.2915,0.2671,0.2569],"m":-0.485}}},"r1-llama-distill-8b":{"m":-0.347,"r2":0.953,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7578,0.6549,0.5894,0.5471,0.5161,0.5071,0.4289,0.4253,0.3361,0.3691],"m":-0.338},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5658,0.4787,0.4155,0.3547,0.3874,0.2966,0.2787,0.278,0.2379,0.2833],"m":-0.5},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6907,0.5765,0.5183,0.4607,0.4394,0.4096,0.388,0.3626,0.3173,0.3464],"m":-0.392}}},"r1-qwen-distill-7b":{"m":-0.035,"r2":-0.431,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.7417,0.7311,0.6753,0.6367,0.574,0.5975,0.5572,0.5424,0.4673,0.4334],"m":-0.255},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6577,0.6015,0.6198,0.6109,1.2157,1.0089,0.9467,2.0917,2.003,1.5526],"m":0.068},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6836,0.7033,0.5886,0.6757,0.6917,0.8381,0.9851,0.8163,0.8131,0.8475],"m":-0.105}}},"r1-qwen3-8b":{"m":-0.465,"r2":0.982,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.8731,0.7657,0.721,0.6241,0.5444,0.5278,0.4947,0.4367,0.4,0.389],"m":-0.294},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4252,0.3462,0.3017,0.2372,0.2166,0.179,0.1505,0.1804,0.1367,0.1262],"m":-0.728},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.681,0.5438,0.4521,0.3822,0.3421,0.2952,0.2824,0.2769,0.2596,0.2391],"m":-0.499}}}},"mmlu":{"qwen3-14b":{"m":-0.674,"r2":0.966,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6127,0.4511,0.3722,0.3219,0.2866,0.2409,0.2273,0.1949,0.17,0.156],"m":-0.619},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5296,0.4024,0.3414,0.2699,0.2361,0.2005,0.1779,0.1509,0.1338,0.1282],"m":-0.705},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5341,0.3995,0.3382,0.2793,0.2501,0.2096,0.1919,0.1611,0.1444,0.1339],"m":-0.685}}},"qwen3-4b-thinking":{"m":-0.792,"r2":0.977,"bins":{"high":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"r":[0.7235,0.5783,0.4669,0.4018,0.328,0.2637,0.2274,0.2329,0.1849,0.1772,0.1592,0.1544,0.1499,0.141,0.1342,0.1325,0.139,0.1223,0.1201],"m":-0.699},"low":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"r":[0.6228,0.5063,0.3905,0.3243,0.2651,0.2186,0.1903,0.1776,0.1543,0.1522,0.1329,0.1304,0.1247,0.1177,0.1145,0.1083,0.1056,0.1024,0.0972],"m":-0.779},"medium":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"r":[0.5848,0.4642,0.3682,0.31,0.2473,0.1943,0.1659,0.1512,0.1318,0.1301,0.114,0.1084,0.1036,0.0979,0.0961,0.0918,0.0872,0.0834,0.0818],"m":-0.843}}},"qwen3-8-27b":{"m":-0.258,"r2":0.998,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6436,0.5948,0.5541,0.5141,0.482,0.4528,0.4364,0.4182,0.4046,0.3889],"m":-0.34},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6332,0.5908,0.5647,0.5147,0.4829,0.4614,0.4291,0.4152,0.3888,0.3727],"m":-0.346},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.617,0.5518,0.5102,0.4519,0.4239,0.3955,0.3779,0.3573,0.3385,0.3303],"m":-0.4}}},"qwen3-8b":{"m":-0.699,"r2":0.999,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6901,0.5029,0.419,0.3169,0.2682,0.2137,0.2011,0.1721,0.1523,0.1408],"m":-0.648},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5541,0.4217,0.3561,0.2618,0.2152,0.1769,0.1635,0.1446,0.1305,0.1191],"m":-0.727},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6126,0.4486,0.3879,0.2796,0.226,0.189,0.1718,0.1475,0.1286,0.1177],"m":-0.712}}},"r1-llama-distill-8b":{"m":-0.651,"r2":0.699,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.571,0.3802,0.2301,0.2081,0.2637,0.3752,0.2548,0.1587,0.1794,0.1888],"m":-0.628},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4193,0.3089,0.2597,0.2261,0.3224,0.3109,0.2459,0.2721,0.1516,0.211],"m":-0.605},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3976,0.3216,0.2826,0.2147,0.163,0.1173,0.1643,0.1807,0.1215,0.1219],"m":-0.774}}},"r1-qwen-distill-7b":{"m":-0.782,"r2":0.982,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4676,0.3861,0.2208,0.1984,0.1569,0.144,0.1132,0.1131,0.0579,0.0515],"m":-0.916},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5281,0.3694,0.3653,0.2307,0.2251,0.2027,0.1411,0.1211,0.1091,0.1032],"m":-0.764},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5249,0.42,0.2967,0.2249,0.1911,0.179,0.1349,0.1142,0.1057,0.0885],"m":-0.799}}},"r1-qwen3-8b":{"m":-0.876,"r2":0.942,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4464,0.3155,0.2382,0.1907,0.1518,0.1244,0.1416,0.1151,0.0894,0.091],"m":-0.854},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6427,0.4642,0.3842,0.3116,0.2284,0.1853,0.1751,0.1353,0.1207,0.1235],"m":-0.711},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3601,0.2584,0.2039,0.1657,0.1286,0.1012,0.0952,0.0809,0.0695,0.0691],"m":-0.963}}}},"onewordqa":{"qwen3-14b":{"m":-0.546,"r2":0.826,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4242,0.3515,0.3095,0.2547,0.2377,0.2177,0.2043,0.1917,0.1754,0.171],"m":-0.657},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5112,0.4883,0.4404,0.3613,0.3325,0.2903,0.2612,0.2341,0.2213,0.2135],"m":-0.542},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4945,0.4748,0.4019,0.3427,0.3082,0.2803,0.2597,0.2375,0.2223,0.21],"m":-0.553}}},"qwen3-4b-thinking":{"m":-0.336,"r2":0.83,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3696,0.3606,0.309,0.2281,0.1961,0.1745,0.1573,0.1491,0.1392,0.13],"m":-0.741},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[1.4188,1.6077,1.4422,1.0245,0.8508,0.7406,0.6652,0.6359,0.5672,0.5622],"m":-0.112},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.819,0.8955,0.8027,0.5656,0.483,0.4143,0.3845,0.3468,0.3115,0.3061],"m":-0.366}}},"qwen3-8-27b":{"m":-0.222,"r2":0.021,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6972,0.6943,0.6565,0.6116,0.5771,0.5587,0.5429,0.5212,0.5031,0.4981],"m":-0.253},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5775,0.6236,0.6163,0.6182,0.5976,0.5938,0.566,0.5426,0.5155,0.4985],"m":-0.249},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5186,0.5611,0.5437,0.5237,0.502,0.4849,0.4681,0.4459,0.4277,0.4143],"m":-0.325}}},"qwen3-8b":{"m":-0.563,"r2":0.861,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4337,0.3223,0.2786,0.2312,0.2098,0.1918,0.1819,0.1717,0.1553,0.1592],"m":-0.701},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5359,0.4983,0.4426,0.4875,0.3208,0.2822,0.2627,0.2343,0.2103,0.2078],"m":-0.536},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.5018,0.4519,0.4084,0.3398,0.3019,0.299,0.258,0.2307,0.2089,0.2043],"m":-0.559}}},"r1-llama-distill-8b":{"m":-0.7,"r2":-0.073,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.2771,0.1886,0.166,0.1527,0.1558,0.1346,0.1441,0.1255,0.094,0.1258],"m":-0.857},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3658,0.344,0.3232,0.2534,0.225,0.1959,0.1726,0.1592,0.1453,0.1421],"m":-0.709},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3391,0.3124,0.2875,0.2541,0.2302,0.1946,0.1683,0.183,0.163,0.1826],"m":-0.685}}},"r1-qwen-distill-7b":{"m":-0.53,"r2":0.8,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4425,0.2627,0.2637,0.1616,0.1444,0.1374,0.3451,0.1216,0.0914,0.0935],"m":-0.806},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.6831,0.4366,0.7203,0.32,0.6282,0.3311,0.2256,0.1908,0.1841,0.1688],"m":-0.541},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4606,0.5585,0.4857,0.3441,0.4141,0.362,0.2336,0.184,0.1997,0.1988],"m":-0.549}}},"r1-qwen3-8b":{"m":-0.467,"r2":-1.32,"bins":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.2222,0.1966,0.2376,0.3249,0.2324,0.1825,0.0946,0.1724,0.1327,0.0756],"m":-0.803},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.4881,0.6401,0.3301,0.3481,0.5231,0.2481,0.1969,0.3511,0.3744,0.1487],"m":-0.516},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"r":[0.3856,0.3558,0.4153,0.3711,0.4288,0.5509,0.2774,0.3541,0.3081,0.3546],"m":-0.432}}}}},"fig5":{"gpqa-diamond":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10],"x":[0.2822,0.4383,0.5423,0.6611,0.7442,0.7915],"y":[5.806,3.694,3.25,4.937,5.25,6.5]},"low":{"k":[2,3,4,6,8,10],"x":[0.2673,0.3452,0.4759,0.5642,0.6275,0.668],"y":[-1.538,-5.385,-6.667,-6.752,-10.256,-13.333]},"medium":{"k":[2,3,4,6,8,10],"x":[0.2654,0.4371,0.5257,0.6279,0.7013,0.7599],"y":[-0.94,-3.504,-4.274,-7.559,-8.746,-10.085]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,6,8,10],"x":[0.0713,0.4745,0.5718,0.6828,0.7511,0.8053],"y":[-2.875,-6.597,-5.556,-11.68,-10.736,-11.868]},"low":{"k":[2,3,4,6,8,10],"x":[0.0709,0.4999,0.631,0.6814,0.7402,0.7547],"y":[-2.308,-1.282,-3.333,-3.134,-4.957,-4.245]},"medium":{"k":[2,3,4,6,8,10],"x":[0.055,0.4502,0.537,0.5737,0.7113,0.7545],"y":[-1.092,-6.579,-5.461,-8.322,-9.86,-10.187]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10],"x":[0.047,0.2306,0.2704,0.3534,0.4202,0.4356],"y":[3.736,0.103,2.48,-1.458,0.576,-1.618]},"low":{"k":[2,3,4,6,8,10],"x":[0.0185,0.1412,0.1612,0.1658,0.2949,0.2755],"y":[-1.282,-0.57,-0.256,-1.026,-0.513,-0.256]},"medium":{"k":[2,3,4,6,8,10],"x":[-0.1061,-0.0268,0.0014,0.0916,0.142,0.1754],"y":[-0.684,-2.099,-2.685,-2.324,-2.55,-4.088]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10],"x":[0.2528,0.4458,0.547,0.6741,0.7539,0.8048],"y":[2.0,0.722,-1.111,-4.528,-3.361,-2.0]},"low":{"k":[2,3,4,6,8,10],"x":[0.1652,0.3791,0.4688,0.5377,0.6357,0.6597],"y":[-5.442,-8.718,-11.538,-11.88,-13.732,-17.692]},"medium":{"k":[2,3,4,6,8,10],"x":[0.2743,0.4371,0.5366,0.6404,0.6928,0.7509],"y":[-1.372,-4.834,-3.504,-6.116,-7.388,-9.06]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10],"x":[0.3982,0.5581,0.6625,0.7555,0.8305,0.8702],"y":[-0.181,-1.708,-2.042,-1.556,-2.898,-3.722]},"low":{"k":[2,3,4,6,8,10],"x":[0.3607,0.4287,0.5682,0.6506,0.7472,0.7962],"y":[-8.661,-18.291,-26.239,-35.826,-37.5,-39.601]},"medium":{"k":[2,3,4,6,8,10],"x":[0.3651,0.5175,0.6405,0.7265,0.807,0.8371],"y":[-4.017,-8.383,-12.441,-16.225,-16.745,-19.306]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10],"x":[0.3134,0.5643,0.678,0.7858,0.8482,0.9019],"y":[-8.487,-14.494,-12.95,-11.602,-8.011,-17.363]},"low":{"k":[2,3,4,6,8,10],"x":[0.2532,0.4585,0.5302,0.5634,0.6937,0.7069],"y":[-11.311,-13.056,-14.035,-25.908,-22.74,-30.497]},"medium":{"k":[2,3,4,6,8,10],"x":[0.2567,0.5262,0.5995,0.7507,0.7885,0.8417],"y":[-5.714,-9.333,-11.286,-18.369,-18.894,-16.398]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10],"x":[-0.0203,0.2477,0.4394,0.564,0.6887,0.7175],"y":[-3.99,-10.528,-10.698,-14.826,-10.42,-16.542]},"low":{"k":[2,3,4,6,8,10],"x":[0.0616,0.3636,0.5905,0.6901,0.7416,0.7497],"y":[-6.422,-16.018,-19.608,-19.389,-25.369,-22.047]},"medium":{"k":[2,3,4,6,8,10],"x":[0.0534,0.3689,0.5404,0.6998,0.7333,0.778],"y":[0.734,-3.631,-5.29,-7.185,-8.523,-8.142]}}},"gsm8k":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3916,0.4829,0.5281,0.5679,0.6024,0.652,0.6741,0.7211,0.7323,0.7612],"y":[-0.0,-0.265,0.341,0.379,-0.152,0.644,0.227,-0.114,-0.244,0.076]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.352,0.4486,0.5106,0.542,0.5794,0.6101,0.6331,0.67,0.6914,0.7072],"y":[-0.038,0.076,0.0,-0.076,-0.076,-0.114,0.038,-0.076,-0.231,-0.303]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3666,0.4565,0.5263,0.5635,0.5995,0.6371,0.6599,0.6923,0.7203,0.7337],"y":[-0.076,-0.126,-0.139,-0.177,-0.329,-0.341,-0.291,-0.48,-0.531,-0.733]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3005,0.4009,0.4774,0.586,0.6376,0.6756,0.7088,0.7441,0.7648,0.781],"y":[-0.189,-1.25,-0.076,-0.265,-0.606,-1.364,-0.758,-2.045,-2.235,-3.258]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.1868,0.4029,0.4679,0.5759,0.6276,0.6485,0.6676,0.6925,0.7083,0.7202],"y":[0.417,0.417,0.455,0.455,0.455,0.379,0.265,0.152,0.152,0.341]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2926,0.4282,0.4996,0.5986,0.6487,0.6846,0.7063,0.7335,0.7479,0.762],"y":[0.013,-0.076,-0.051,-0.101,-0.139,-0.291,-0.392,-0.695,-0.923,-1.011]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.1012,-0.01,0.059,0.1273,0.1663,0.1993,0.1945,0.202,0.1733,0.1914],"y":[-0.265,0.72,0.947,0.492,0.189,0.568,-0.038,0.909,0.985,0.0]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.1805,-0.0797,-0.0132,0.0679,0.128,0.1658,0.2001,0.2157,0.2505,0.2751],"y":[0.0,-0.038,0.0,0.0,0.0,0.0,0.0,0.0,-0.038,-0.038]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.1235,-0.0262,0.0201,0.0995,0.1572,0.1839,0.2128,0.2174,0.2463,0.2582],"y":[-0.114,-0.088,-0.013,0.0,-0.051,-0.013,0.051,-0.076,-0.088,-0.076]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2645,0.3529,0.3983,0.5138,0.5744,0.6232,0.6433,0.6896,0.7094,0.7409],"y":[0.985,0.909,-0.227,-1.439,-1.894,-1.629,-1.856,-2.462,-3.674,-3.75]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2583,0.4072,0.4668,0.567,0.5987,0.6394,0.6574,0.6799,0.7008,0.7146],"y":[0.379,0.303,0.341,0.227,-0.038,0.038,-0.0,-0.152,-0.189,-0.341]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2843,0.4145,0.4715,0.5768,0.6193,0.6643,0.6822,0.7104,0.7329,0.7419],"y":[0.038,0.063,0.025,-0.063,-0.316,-0.291,-0.493,-0.796,-0.923,-0.961]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2368,0.3556,0.3998,0.4885,0.5333,0.548,0.535,0.622,0.6465,0.6418],"y":[-3.667,-6.382,-9.381,-11.578,-12.711,-13.574,-15.21,-18.611,-19.524,-20.846]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3864,0.4905,0.5642,0.6378,0.6662,0.6943,0.7178,0.7259,0.7552,0.752],"y":[-0.657,-1.107,-1.772,-2.639,-2.875,-4.259,-4.43,-6.429,-7.908,-8.144]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3245,0.4287,0.5015,0.5801,0.6099,0.6329,0.646,0.6641,0.6797,0.6915],"y":[-1.442,-3.832,-5.515,-7.688,-8.442,-9.656,-10.784,-13.486,-14.227,-16.597]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.246,0.455,0.5171,0.5729,0.6296,0.6641,0.6776,0.6463,0.6942,0.6621],"y":[0.598,-0.611,-3.068,-4.666,-6.582,-9.259,-9.813,-14.962,-17.918,-20.181]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3777,0.4942,0.5878,0.6557,0.6875,0.708,0.7293,0.7371,0.7476,0.7393],"y":[-0.507,0.072,-1.141,-1.791,-2.67,-3.371,-4.55,-6.649,-9.266,-10.362]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3323,0.4947,0.5454,0.6332,0.651,0.6619,0.7082,0.7058,0.6633,0.7076],"y":[-0.686,-1.138,-2.013,-4.063,-6.061,-7.528,-8.997,-12.322,-15.621,-18.388]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2148,0.3075,0.3828,0.4736,0.5328,0.5786,0.6109,0.6514,0.6734,0.6934],"y":[0.842,1.166,0.821,1.191,-0.589,-0.451,0.916,0.539,-0.093,-1.172]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6651,0.7401,0.7856,0.8328,0.8495,0.8704,0.8792,0.8893,0.8907,0.9025],"y":[-0.341,-0.875,-0.379,-0.459,-0.231,-0.497,-0.603,-1.081,-1.046,-2.273]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5593,0.649,0.7007,0.7645,0.797,0.8173,0.8289,0.8466,0.857,0.8604],"y":[-0.448,-0.955,-0.659,-0.818,-0.52,-1.175,-0.949,-1.733,-1.525,-3.033]}}},"integrals":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4723,0.5714,0.629,0.6721,0.7239,0.7488,0.7624,0.7995,0.8139,0.8239],"y":[-1.05,-2.6,-2.7,-2.35,-3.9,-4.85,-5.2,-7.4,-7.95,-8.0]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6436,0.7158,0.7554,0.791,0.8216,0.8411,0.8522,0.8692,0.8749,0.8826],"y":[0.0,-0.05,-0.1,0.0,-0.1,-0.1,-0.1,-0.05,-0.05,-0.15]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.613,0.6973,0.737,0.7756,0.8057,0.8275,0.8393,0.8565,0.87,0.8775],"y":[-0.45,-0.333,-0.317,-0.217,-0.25,-0.15,-0.217,-0.2,-0.35,-0.417]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.1758,0.2666,0.2951,0.3815,0.4367,0.5043,0.5227,0.5748,0.5933,0.6256],"y":[-1.1,-1.3,-1.65,-2.7,-4.65,-5.7,-7.2,-10.8,-14.7,-17.2]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.403,0.5433,0.5949,0.6703,0.7118,0.7297,0.7463,0.7673,0.7725,0.7813],"y":[-0.25,-0.05,-0.15,0.0,0.0,-0.05,0.0,0.0,-0.05,-0.1]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2768,0.3927,0.4402,0.5456,0.6066,0.6437,0.6688,0.7049,0.7223,0.7421],"y":[-0.117,-0.05,-0.1,-0.017,-0.05,-0.2,-0.217,-0.217,-0.45,-0.5]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.0846,-0.1132,-0.0617,-0.0862,-0.027,-0.0225,-0.0066,0.0137,0.0669,0.0519],"y":[-1.2,-2.55,-3.35,-4.85,-4.3,-5.9,-7.05,-6.05,-6.25,-5.539]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2982,0.368,0.4062,0.491,0.538,0.5661,0.5859,0.5986,0.5956,0.5929],"y":[0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.1631,0.2182,0.2743,0.3319,0.3774,0.4023,0.4255,0.4349,0.452,0.459],"y":[-0.033,-0.083,-0.167,-0.283,-0.4,-0.583,-0.6,-0.717,-0.333,-0.685]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3887,0.4917,0.5614,0.6412,0.7029,0.7537,0.7703,0.7966,0.8205,0.829],"y":[-2.456,-4.1,-4.4,-7.206,-8.55,-11.5,-11.0,-13.25,-15.75,-16.283]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6271,0.6915,0.7431,0.7984,0.8228,0.8465,0.8542,0.8725,0.8845,0.8932],"y":[-0.1,0.0,0.0,0.0,0.0,-0.05,-0.05,0.0,-0.25,-0.05]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5731,0.6469,0.6995,0.7651,0.7945,0.8231,0.8352,0.8547,0.8684,0.8798],"y":[-0.183,-0.167,-0.383,-0.317,-0.2,-0.283,-0.55,-0.417,-0.533,-0.919]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6681,0.6919,0.7354,0.7776,0.7986,0.8235,0.8237,0.8312,0.8479,0.8522],"y":[-8.0,-10.45,-15.667,-18.0,-21.2,-23.15,-26.8,-26.111,-26.55,-28.356]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6935,0.7553,0.7939,0.8341,0.8543,0.8668,0.874,0.8835,0.8932,0.8959],"y":[-0.9,-0.65,-0.85,-0.2,-0.2,-0.7,-0.8,-0.9,-0.65,-0.9]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.657,0.7207,0.7621,0.7977,0.8213,0.8391,0.8434,0.8541,0.8619,0.8662],"y":[-4.476,-4.819,-5.604,-6.652,-6.867,-7.95,-9.117,-10.096,-10.457,-11.541]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5002,0.624,0.687,0.7519,0.7839,0.8219,0.8277,0.8394,0.8552,0.8633],"y":[-4.233,-6.522,-9.844,-12.606,-19.2,-20.472,-25.767,-32.46,-41.789,-41.643]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5468,0.6496,0.6752,0.7695,0.7916,0.8103,0.8192,0.8259,0.8213,0.8189],"y":[-2.2,-1.95,-1.75,-2.7,-3.944,-3.1,-7.222,-10.157,-16.839,-16.655]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5917,0.6931,0.7453,0.8008,0.8163,0.8465,0.847,0.8557,0.856,0.8597],"y":[-3.95,-4.287,-4.587,-6.046,-7.115,-7.228,-11.03,-14.823,-23.855,-22.75]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3628,0.4446,0.5199,0.5958,0.6646,0.7177,0.7327,0.7639,0.775,0.7898],"y":[-12.15,-7.05,-6.706,-10.317,-11.35,-15.083,-13.7,-15.55,-18.978,-18.4]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5593,0.6745,0.7237,0.8156,0.852,0.8797,0.8911,0.9074,0.9117,0.9163],"y":[-9.25,-2.2,0.3,-0.1,0.0,-0.05,-0.65,-0.1,-1.1,-0.5]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4733,0.5852,0.6524,0.7463,0.7984,0.8249,0.8401,0.8658,0.8796,0.885],"y":[-14.85,-3.9,-0.717,-0.667,-0.95,-1.369,-1.867,-2.433,-3.42,-2.317]}}},"math500":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2775,0.3647,0.3917,0.4362,0.4861,0.5188,0.5365,0.5637,0.5946,0.6008],"y":[1.7,-2.1,-1.1,-3.244,-3.744,-6.544,-7.967,-6.811,-9.233,-11.067]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3718,0.4873,0.5196,0.6266,0.6802,0.6574,0.7002,0.7421,0.7405,0.73],"y":[0.1,0.2,0.1,0.0,0.0,-0.1,-1.0,-0.9,-0.2,-0.611]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3831,0.4713,0.525,0.5745,0.6049,0.6313,0.6552,0.6825,0.7024,0.7119],"y":[-0.2,-0.233,-0.7,-0.533,-1.167,-1.204,-1.267,-1.867,-1.837,-2.6]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3983,0.466,0.4984,0.5477,0.566,0.605,0.6151,0.6701,0.702,0.7103],"y":[-1.5,-3.1,-3.6,-5.1,-6.022,-6.322,-8.678,-8.944,-11.944,-12.3]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2939,0.429,0.4786,0.506,0.5838,0.5896,0.6622,0.6772,0.6884,0.7235],"y":[0.0,-0.1,-0.1,-0.1,0.0,-0.1,-0.2,-0.4,-0.622,-0.2]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3533,0.3935,0.4202,0.499,0.5294,0.5815,0.6251,0.6643,0.6987,0.7079],"y":[-0.4,-0.4,-0.6,-0.367,-0.767,-0.948,-1.033,-1.7,-1.556,-1.567]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.075,0.0506,0.0626,0.1009,0.1088,0.1307,0.0935,0.0926,0.0877,0.114],"y":[-1.3,-2.3,-4.111,-4.3,-3.722,-4.3,-6.8,-3.789,-5.744,-4.789]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.0734,0.0803,0.0728,0.0563,0.2075,0.228,0.2485,0.2627,0.2353,0.2391],"y":[0.2,0.0,0.1,-0.2,-0.5,-0.4,-0.4,-0.2,-0.7,-0.9]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.0052,0.0327,0.0774,0.1138,0.1396,0.1599,0.1425,0.1629,0.1745,0.1704],"y":[-0.074,-0.1,-0.2,-0.467,-0.167,-0.333,-0.8,-0.467,-0.544,-0.6]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2464,0.3241,0.3862,0.4472,0.4692,0.5147,0.534,0.5747,0.592,0.6101],"y":[1.778,-0.067,-0.478,-2.861,-2.197,-3.158,-3.944,-5.191,-8.426,-10.993]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4403,0.5712,0.5939,0.6857,0.7177,0.7462,0.7553,0.7734,0.7856,0.8012],"y":[0.0,0.0,-0.2,-0.3,-0.6,-0.6,-1.211,-1.011,-1.276,-1.967]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3889,0.5001,0.5147,0.6021,0.6402,0.6682,0.6894,0.6994,0.7268,0.736],"y":[0.333,0.3,0.13,-0.178,-1.0,-1.437,-1.589,-1.731,-2.085,-3.986]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.16,0.2652,0.313,0.4009,0.4142,0.4138,0.5162,0.5097,0.6064,0.5856],"y":[-5.598,-11.173,-7.389,-13.519,-17.2,-19.234,-20.173,-22.99,-26.48,-26.254]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3723,0.4641,0.5405,0.6003,0.5579,0.6663,0.6866,0.69,0.7344,0.6927],"y":[-2.3,-3.856,-4.536,-6.0,-7.892,-6.772,-6.169,-11.164,-13.844,-11.808]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2276,0.362,0.4088,0.4797,0.5005,0.5478,0.5664,0.5937,0.6436,0.5994],"y":[-0.515,-4.082,-3.038,-6.714,-8.975,-10.101,-10.678,-13.801,-17.503,-15.525]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.1946,0.1726,0.2301,0.288,0.3274,0.3341,0.3642,0.3932,0.4998,0.5228],"y":[-5.738,-17.582,-16.75,-26.027,-41.538,-40.894,-56.827,-59.133,-69.344,-65.805]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.267,0.3545,0.3245,0.3025,-0.3462,-0.1008,-0.0262,-1.3096,-1.3193,-0.6978],"y":[-2.533,-8.525,-8.456,-17.88,-32.885,-34.727,-54.069,-69.833,-89.4,-80.351]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2536,0.2157,0.3562,0.2653,0.2436,0.1059,-0.0907,0.1276,0.1137,0.0435],"y":[-4.707,-9.83,-12.365,-20.32,-35.278,-39.005,-57.101,-73.282,-88.165,-82.473]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.0851,0.1949,0.2445,0.3477,0.431,0.4531,0.4851,0.5419,0.5827,0.5957],"y":[-4.222,-3.289,-2.378,-2.7,-2.858,-5.8,-7.796,-7.431,-12.444,-16.141]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5786,0.6533,0.7063,0.7579,0.783,0.8224,0.8489,0.8199,0.8642,0.8718],"y":[-2.222,-1.311,-0.3,-1.011,-0.9,-2.122,-2.206,-2.158,-7.0,-8.111]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2851,0.4322,0.5257,0.6011,0.6421,0.6905,0.7025,0.7091,0.7277,0.7525],"y":[-2.159,-2.367,-1.533,-2.419,-3.085,-3.841,-4.445,-5.066,-8.826,-10.187]}}},"mmlu":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3717,0.5328,0.6166,0.6696,0.7038,0.7515,0.7636,0.7992,0.8249,0.8395],"y":[-2.908,-3.688,-4.362,-5.213,-6.277,-6.844,-7.411,-8.582,-9.61,-10.993]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4762,0.6027,0.6625,0.7336,0.7671,0.8023,0.8242,0.8504,0.868,0.8731],"y":[-0.071,-0.214,-0.427,-0.107,-0.107,-0.178,-0.285,-0.427,-1.068,-1.566]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4682,0.6028,0.6644,0.7221,0.7524,0.7921,0.8101,0.8404,0.8565,0.8669],"y":[-0.474,-0.771,-1.068,-1.151,-1.317,-1.554,-1.744,-2.206,-3.049,-3.76]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"x":[0.2443,0.3973,0.5143,0.5803,0.6589,0.7272,0.7651,0.7586,0.809,0.817,0.8362,0.8403,0.8458,0.8549,0.8624,0.8636,0.8592,0.8738,0.8761],"y":[0.709,-0.158,-1.241,-1.418,-2.27,-2.624,-3.156,-3.838,-3.723,-5.414,-5.313,-6.087,-5.977,-5.559,-6.876,-6.357,-7.167,-8.55,-8.377]},"low":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"x":[0.4142,0.524,0.6318,0.696,0.7497,0.7961,0.8209,0.8331,0.8542,0.8561,0.8739,0.8762,0.8825,0.8887,0.8926,0.8976,0.9001,0.9033,0.9081],"y":[0.036,0.32,0.036,0.036,0.463,-0.178,-0.249,-0.32,0.071,-0.299,-0.253,-0.329,-0.391,-0.641,-0.961,-1.032,-0.558,-0.514,-0.996]},"medium":{"k":[2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20],"x":[0.401,0.5228,0.6212,0.6816,0.745,0.8002,0.8288,0.8443,0.8644,0.866,0.8827,0.8885,0.8936,0.8991,0.901,0.9055,0.9103,0.9142,0.9158],"y":[0.212,0.401,-0.079,-0.474,-0.473,-0.664,-0.973,-0.807,-0.7,-1.44,-1.705,-1.941,-1.818,-2.316,-2.533,-2.502,-2.264,-2.678,-2.8]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.0858,0.157,0.2104,0.2711,0.3136,0.3514,0.3747,0.3987,0.4245,0.4463],"y":[-1.596,-1.135,-2.199,-2.029,-2.589,-1.099,-2.313,-2.092,-2.553,-2.624]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2382,0.2892,0.3208,0.3769,0.4182,0.4485,0.4791,0.5007,0.531,0.5475],"y":[-0.142,-0.32,-0.036,-0.285,-0.107,-0.142,-0.178,-0.142,-0.142,-0.178]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.1925,0.2759,0.3293,0.4061,0.4421,0.4805,0.5024,0.5292,0.5546,0.5652],"y":[-0.012,0.036,-0.261,-0.166,-0.083,-0.059,-0.453,-0.13,-0.166,-0.024]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2727,0.4732,0.5608,0.668,0.719,0.7774,0.7893,0.8194,0.8416,0.8534],"y":[-3.038,-4.61,-5.638,-7.128,-8.085,-10.177,-8.759,-11.383,-12.766,-14.433]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4588,0.5856,0.6507,0.7449,0.7902,0.8274,0.8409,0.8596,0.8733,0.8843],"y":[0.142,-1.103,-0.641,-0.142,-0.249,-0.142,-0.391,-1.423,-3.665,-4.164]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3893,0.5526,0.6135,0.7215,0.7746,0.8116,0.8281,0.8526,0.8714,0.8819],"y":[-0.486,-2.871,-2.112,-2.479,-2.645,-2.977,-2.906,-4.638,-6.323,-7.639]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2907,0.5012,0.7002,0.7653,0.7128,0.5588,0.6966,0.7901,0.7779,0.7891],"y":[-7.776,-10.511,-12.621,-17.112,-17.175,-23.968,-24.547,-28.619,-28.046,-27.147]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.565,0.6794,0.7315,0.7646,0.6483,0.6976,0.7134,0.7244,0.837,0.7465],"y":[-1.095,-3.464,-6.198,-13.972,-20.718,-37.107,-42.449,-50.337,-57.25,-56.666]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5299,0.6402,0.6903,0.7485,0.8031,0.8607,0.7945,0.8234,0.8931,0.8694],"y":[-5.711,-8.205,-11.577,-15.806,-22.143,-32.73,-34.862,-40.878,-43.133,-43.824]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.452,0.5454,0.6968,0.7738,0.7566,0.8516,0.8796,0.8516,0.8834,0.9328],"y":[-6.553,-7.778,-8.68,-12.334,-13.247,-14.429,-15.461,-17.586,-19.858,-22.963]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4611,0.6276,0.6363,0.7672,0.7646,0.7954,0.8579,0.8781,0.8901,0.8963],"y":[-10.257,-7.865,-7.098,-8.924,-10.603,-11.546,-14.527,-17.931,-29.099,-33.12]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4801,0.574,0.6985,0.7711,0.8062,0.802,0.8585,0.8898,0.8901,0.9098],"y":[-6.499,-7.976,-7.398,-8.885,-11.736,-12.377,-15.285,-18.031,-23.369,-26.693]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5223,0.6656,0.7447,0.7987,0.841,0.8666,0.8525,0.8782,0.9049,0.9027],"y":[-9.896,-10.665,-11.997,-13.081,-13.849,-15.41,-14.906,-15.35,-17.01,-15.686]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4348,0.5867,0.6579,0.7251,0.7972,0.8339,0.8461,0.8763,0.8926,0.8907],"y":[-7.773,-8.762,-9.155,-8.192,-7.2,-8.78,-9.638,-10.363,-14.732,-11.454]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6201,0.7274,0.7859,0.8252,0.8655,0.8936,0.9002,0.915,0.9271,0.9278],"y":[-7.482,-9.352,-10.739,-10.374,-9.426,-11.198,-10.778,-11.899,-14.027,-14.246]}}},"onewordqa":{"qwen3-14b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5295,0.6092,0.6552,0.7144,0.7336,0.7558,0.7691,0.7819,0.8004,0.8057],"y":[-0.613,0.323,0.194,0.484,0.484,0.903,1.097,1.613,1.387,1.355]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4835,0.5064,0.5549,0.6352,0.6636,0.7068,0.7358,0.7637,0.7766,0.7849],"y":[0.197,0.362,0.197,0.132,0.329,0.23,0.0,0.099,0.263,0.592]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4792,0.5011,0.5765,0.6384,0.6761,0.7046,0.7275,0.7504,0.7671,0.7792],"y":[0.278,0.471,0.503,0.835,1.092,0.846,1.103,1.06,1.081,1.071]}},"qwen3-4b-thinking":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5061,0.5025,0.5718,0.6827,0.7206,0.7561,0.7795,0.7908,0.8002,0.816],"y":[0.032,-0.097,-0.29,-0.677,-0.742,-0.71,-0.839,-0.871,-1.161,-1.065]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[-0.1433,-0.3074,-0.1726,0.1617,0.2978,0.3972,0.4512,0.4801,0.5327,0.5397],"y":[0.613,0.355,-0.323,-0.355,-0.097,-0.161,-0.484,-0.548,-0.71,-0.29]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.0967,0.0087,0.1105,0.3812,0.4676,0.5462,0.5803,0.6222,0.6568,0.6647],"y":[0.668,0.517,0.453,0.129,0.172,0.032,-0.054,0.011,-0.205,-0.205]}},"qwen3-8-27b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.2115,0.2045,0.2469,0.2984,0.3408,0.3616,0.3777,0.4011,0.4235,0.4307],"y":[0.065,-0.0,0.484,0.839,0.871,0.935,1.29,1.484,1.452,1.548]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.314,0.2566,0.2669,0.2633,0.2871,0.2903,0.3255,0.353,0.3833,0.405],"y":[0.065,0.0,-0.065,-0.065,-0.065,0.065,-0.032,-0.032,-0.032,-0.032]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3849,0.3331,0.3536,0.3766,0.4015,0.4216,0.4414,0.468,0.4903,0.5052],"y":[0.022,-0.022,-0.011,-0.129,-0.108,-0.097,-0.118,-0.043,-0.043,-0.043]}},"qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.531,0.6508,0.6997,0.7499,0.773,0.7939,0.8045,0.815,0.8323,0.8277],"y":[-0.71,-0.484,0.161,-0.032,-0.452,-0.29,-0.29,-0.194,-0.194,-0.258]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4652,0.5024,0.5589,0.5327,0.6815,0.7192,0.7392,0.7662,0.7898,0.7938],"y":[-0.129,0.129,-0.065,0.065,0.226,0.258,0.323,0.065,0.065,0.097]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4745,0.5261,0.5736,0.645,0.685,0.6905,0.7299,0.7596,0.7826,0.7873],"y":[-0.086,-0.054,0.323,0.302,0.205,0.644,0.571,0.56,0.625,0.614]}},"r1-llama-distill-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6841,0.7765,0.8023,0.8138,0.7759,0.7981,0.7928,0.8384,0.8834,0.864],"y":[2.674,6.373,6.538,7.219,7.591,7.9,7.638,8.538,8.398,8.731]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6513,0.6724,0.6895,0.7575,0.7837,0.8117,0.8349,0.8472,0.8608,0.8635],"y":[3.864,4.253,3.741,3.817,4.026,4.022,4.123,3.214,3.564,3.658]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6613,0.6742,0.6997,0.731,0.7585,0.8126,0.8219,0.8219,0.8319,0.8185],"y":[4.797,4.691,4.551,5.566,5.19,5.965,5.835,5.572,6.32,5.26]}},"r1-qwen-distill-7b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.4444,0.6371,0.6192,0.7817,0.8068,0.8121,0.5866,0.8485,0.8759,0.6463],"y":[4.258,4.032,3.871,5.0,5.792,5.269,4.405,4.568,4.685,4.961]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.3284,0.5828,0.3641,0.6953,0.4412,0.6769,0.7869,0.8174,0.8242,0.8394],"y":[1.509,2.541,2.022,2.125,3.179,4.186,3.366,3.233,3.552,3.545]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5099,0.3761,0.4406,0.6503,0.5325,0.5812,0.757,0.7999,0.7765,0.7823],"y":[5.321,5.674,5.275,6.251,6.619,7.44,6.958,7.555,7.804,7.224]}},"r1-qwen3-8b":{"high":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.7087,0.7233,0.4785,0.1634,0.695,0.7482,0.8653,0.6907,0.8341,0.8878],"y":[-10.348,-26.297,-26.215,-29.603,-35.971,-35.858,-32.677,-38.778,-33.824,-37.602]},"low":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.5974,0.3835,0.6987,0.6871,0.5762,0.7745,0.8214,0.6424,0.6386,0.8662],"y":[4.948,2.016,0.879,-1.535,-4.068,-4.81,-4.065,-4.321,-2.993,-3.232]},"medium":{"k":[2,3,4,6,8,10,12,15,18,20],"x":[0.6135,0.6508,0.5742,0.6509,0.5785,0.4505,0.7088,0.6579,0.6657,0.6246],"y":[-1.031,-4.81,-6.756,-8.946,-14.207,-14.139,-12.973,-14.329,-11.953,-13.894]}}}}}</script>
+<script>
+(() => {
+"use strict";
+const D = JSON.parse(document.getElementById("figdata").textContent);
+const REDUCE = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const HOVER = matchMedia("(hover: hover)").matches;
+const SPEED = 0.5;   // figure time runs at half the wall-clock rate
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => 1 - Math.pow(1 - x, 3);
+const seg = (t, a, b) => ease(clamp((t - a) / (b - a)));
+const lin = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, p) => a + (b - a) * p;
+const minus = s => String(s).replace(/-/g, "−");
+const fx = (v, d) => minus(v.toFixed(d));
+const $ = (s, r = document) => r.querySelector(s);
+
+const MODELS = [["qwen3-4b-thinking", "Qwen3 4B Thinking"], ["qwen3-8b", "Qwen3 8B"], ["qwen3-14b", "Qwen3 14B"],
+  ["qwen3-8-27b", "Qwen3.8 27B"], ["r1-qwen-distill-7b", "R1 Qwen 7B"], ["r1-llama-distill-8b", "R1 Llama 8B"], ["r1-qwen3-8b", "R1 Qwen3 8B"]];
+const DATASETS = [["integrals", "Integrals"], ["mmlu", "MMLU-Redux"], ["onewordqa", "OneWordQA"],
+  ["gpqa-diamond", "GPQA-Diamond"], ["gsm8k", "GSM8K"], ["math500", "MATH-500"]];
+const BINS = ["high", "medium", "low"];
+const BIN_NAME = { high: "long", medium: "medium", low: "short" };
+
+function fillSelect(sel, opts, value) {
+  sel.innerHTML = opts.map(([v, l]) => `<option value="${v}"${v === value ? " selected" : ""}>${l}</option>`).join("");
+  const fit = () => { sel.style.width = (sel.options[sel.selectedIndex].text.length + 0.6) + "ch"; };
+  sel.addEventListener("change", fit); fit();
+}
+
+/* ---- the one motion helper every figure plugs into ----
+   Starts once 60% of the figure is in view, pauses when it leaves, plays once and holds
+   the final frame. draw(t) must be a pure function of time t in [0, duration]. */
+function onVisible(el, { duration, draw }) {
+  let t = 0, playing = false, done = false, last = 0, raf = 0;
+  const tick = now => {
+    if (!playing) return;
+    t = Math.min(duration, t + (now - last) * SPEED); last = now; draw(t);
+    if (t >= duration) { playing = false; done = true; } else raf = requestAnimationFrame(tick);
+  };
+  const play = () => { if (playing || done) return; playing = true; last = performance.now(); raf = requestAnimationFrame(tick); };
+  const pause = () => { playing = false; cancelAnimationFrame(raf); };
+  const seek = x => { pause(); t = x; done = true; draw(t); };
+  if (REDUCE) { t = duration; done = true; }
+  draw(t);
+  new IntersectionObserver(es => es.forEach(e => {
+    const tall = e.intersectionRect.height >= 0.6 * innerHeight;
+    if (e.intersectionRatio >= 0.6 || tall) play();
+    else if (e.intersectionRatio < 0.3) pause();
+  }), { threshold: [0, 0.15, 0.3, 0.45, 0.6, 0.8, 1] }).observe(el);
+  const btn = el.closest("figure").querySelector(".replay");
+  if (btn) btn.addEventListener("click", () => {
+    if (REDUCE) return seek(duration);
+    pause(); t = 0; done = false; draw(0); play();
+  });
+  addEventListener("beforeprint", () => seek(duration));
+  return { seek, redraw: () => draw(t) };
+}
+
+/* ---------- fig 1: terminal ---------- */
+(function fig1() {
+  const term = $("#term");
+  const lines = [...term.querySelectorAll(".ln[data-l]")];
+  const ticks = lines.map(l => [...l.querySelectorAll(".res i")]);
+  const igs = [...term.querySelectorAll(".merged .ig")], pls = [...term.querySelectorAll(".merged .pl")];
+  const merged = $(".merged", term), pr = $(".merged .pr", term), think = $(".think", term), dots = $(".dots", term);
+  const outs = [...term.querySelectorAll(".out .o")], cm = $(".cm", term);
+  const op = (el, v) => { el.style.opacity = v; };
+  function draw(t) {
+    ticks.forEach((row, i) => row.forEach((el, j) => {
+      const p = seg(t, 150 + i * 420 + j * 110, 330 + i * 420 + j * 110);
+      op(el, p); el.style.transform = `scale(${0.6 + 0.4 * p})`;
+    }));
+    lines.forEach(l => op(l, 1 - 0.55 * seg(t, 1650, 1950)));
+    const shown = t >= 1700;
+    op(merged, shown ? 1 : 0); op(pr, seg(t, 1700, 1900));
+    igs.forEach((el, i) => {
+      const p = seg(t, 1750 + i * 150, 2350 + i * 150);
+      op(el, p); el.style.transform = `translateY(${(1 - p) * -(3 - i) * 26}px)`;
+    });
+    pls.forEach(el => op(el, seg(t, 2350, 2700)));
+    const th = t >= 2900 && t < 3700 ? 1 : t >= 3700 ? 0.55 : 0;
+    op(think, th);
+    dots.textContent = t >= 3700 || t < 2900 ? "···" : "·".repeat(1 + Math.floor((t - 2900) / 180) % 3).padEnd(3, " ");
+    outs.forEach((el, i) => op(el, seg(t, 3750 + i * 260, 3950 + i * 260)));
+    op(cm, seg(t, 4600, 5000));
+  }
+  // the merged command's plain text ("solve", quotes, "dx") fades with the prompt
+  const wrapText = () => {
+    [...merged.childNodes].forEach(n => {
+      if (n.nodeType === 3 && n.textContent.trim()) {
+        const s = document.createElement("span"); s.className = "mt"; s.textContent = n.textContent; merged.replaceChild(s, n);
+      }
+    });
+  };
+  wrapText();
+  const mts = [...merged.querySelectorAll(".mt")];
+  const draw2 = t => { draw(t); mts.forEach(el => op(el, seg(t, 1700, 1950))); };
+  onVisible($("#fig1 .frame"), { duration: 5000, draw: draw2 });
+})();
+
+/* ---------- shared chart pieces ---------- */
+function axes({ W, H, M, xt, yt, X, Y, xl, yl }) {
+  let s = "";
+  for (const [v, l] of yt) {
+    const y = Y(v).toFixed(1);
+    s += `<line class="grid" x1="${M.l}" x2="${W - M.r}" y1="${y}" y2="${y}"/><text class="tk" x="${M.l - 8}" y="${+y + 4}" text-anchor="end">${l}</text>`;
+  }
+  for (const [v, l] of xt) {
+    const x = X(v).toFixed(1);
+    s += `<line class="tick" x1="${x}" x2="${x}" y1="${H - M.b}" y2="${H - M.b + 4}"/><text class="tk" x="${x}" y="${H - M.b + 17}" text-anchor="middle">${l}</text>`;
+  }
+  s += `<line class="ax" x1="${M.l}" x2="${W - M.r}" y1="${H - M.b}" y2="${H - M.b}"/>`;
+  s += `<text class="al" x="${((M.l + W - M.r) / 2).toFixed(1)}" y="${H - 3}" text-anchor="middle">${xl}</text>`;
+  s += `<text class="al" transform="translate(11 ${((M.t + H - M.b) / 2).toFixed(1)}) rotate(-90)" text-anchor="middle">${yl}</text>`;
+  return s;
+}
+function hoverTip(box, svg, tip, getPts, fmt) {
+  if (!HOVER) return;
+  svg.addEventListener("pointermove", e => {
+    const r = svg.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    let best = null, bd = 16 * 16;
+    for (const p of getPts()) { const d = (p.x - x) ** 2 + (p.y - y) ** 2; if (d < bd) { bd = d; best = p; } }
+    if (!best) { tip.hidden = true; return; }
+    tip.hidden = false; tip.innerHTML = fmt(best);
+    tip.style.left = best.x + "px"; tip.style.top = best.y + "px";
+  });
+  svg.addEventListener("pointerleave", () => { tip.hidden = true; });
+}
+function nice(x) { const p = Math.pow(10, Math.floor(Math.log10(x))), n = x / p; return (n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10) * p; }
+function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
+
+/* ---------- fig 2: power law ---------- */
+(function fig2() {
+  const box = $("#pplot"), svg = $("svg", box), tip = $(".tip", box), out = $("#preadout");
+  const selD = $("#f2-dataset"), selM = $("#f2-model");
+  fillSelect(selD, DATASETS, "mmlu"); fillSelect(selM, MODELS, "qwen3-4b-thinking");
+  let to = target(), from = null, m0 = 0, lineP = 0, labA = 0, cur = to, pts = [];
+  function target() {
+    const e = D.fig2[selD.value][selM.value], bins = {};
+    let kmax = 1, ymin = 1;
+    for (const g of BINS) {
+      const s = e.bins[g];
+      bins[g] = { m: s.m, pts: s.k.map((k, i) => ({ k, r: s.r[i], a: 1 })) };
+      kmax = Math.max(kmax, ...s.k); ymin = Math.min(ymin, ...s.r);
+    }
+    for (const g of BINS) ymin = Math.min(ymin, Math.pow(kmax, bins[g].m));
+    return { kmax, ymin, bins, m: e.m, r2: e.r2 };
+  }
+  function mix(a, b, p) {
+    const L = (x, y) => Math.exp(lerp(Math.log(x), Math.log(y), p));
+    const o = { kmax: L(a.kmax, b.kmax), ymin: L(a.ymin, b.ymin), bins: {} };
+    for (const g of BINS) {
+      const A = new Map(a.bins[g].pts.map(q => [q.k, q])), B = new Map(b.bins[g].pts.map(q => [q.k, q]));
+      const ks = [...new Set([...A.keys(), ...B.keys()])].sort((x, y) => x - y);
+      o.bins[g] = { m: lerp(a.bins[g].m, b.bins[g].m, p), pts: ks.map(k => {
+        const qa = A.get(k), qb = B.get(k);
+        if (qa && qb) return { k, r: L(qa.r, qb.r), a: lerp(qa.a, qb.a, p) };
+        if (qa) return { k, r: qa.r, a: qa.a * (1 - p) };
+        return { k, r: qb.r, a: qb.a * p };
+      }) };
+    }
+    return o;
+  }
+  function render() {
+    let S = to;
+    if (from) {
+      const p = seg(performance.now() - m0, 0, 400 / SPEED);
+      S = mix(from, to, p);
+      if (p >= 1) from = null;
+    }
+    cur = S;
+    const W = box.clientWidth; if (!W) return;
+    const H = Math.round(clamp(W * 0.6, 250, 360));
+    const M = { l: 44, r: W < 420 ? 76 : 88, t: 12, b: 40 };
+    const lx0 = Math.log(0.9), lx1 = Math.log(S.kmax * 1.1), ly0 = Math.log(S.ymin * 0.8), ly1 = Math.log(1.25);
+    const X = k => M.l + (Math.log(k) - lx0) / (lx1 - lx0) * (W - M.l - M.r);
+    const Y = r => M.t + (ly1 - Math.log(r)) / (ly1 - ly0) * (H - M.t - M.b);
+    const xt = [1, 2, 4, 6, 10, 20].filter(k => k <= S.kmax * 1.05).map(k => [k, k]);
+    const yt = [0.02, 0.05, 0.1, 0.2, 0.3, 0.5, 1].filter(v => Math.log(v) >= ly0 && Math.log(v) <= ly1)
+      .map(v => [v, v === 1 ? "1" : v < 0.1 ? v.toFixed(2) : v.toFixed(1)]);
+    let s = axes({ W, H, M, xt, yt, X, Y, xl: "tasks per composition, k", yl: "token ratio r" });
+    s += `<line class="one" x1="${M.l}" x2="${W - M.r}" y1="${Y(1).toFixed(1)}" y2="${Y(1).toFixed(1)}"/>`;
+    const kend = Math.exp(lineP * Math.log(S.kmax));
+    for (const g of BINS) {
+      const m = S.bins[g].m;
+      s += `<line class="fit s-${g}" data-g="${g}" x1="${X(1).toFixed(1)}" y1="${Y(1).toFixed(1)}" x2="${X(kend).toFixed(1)}" y2="${Y(Math.pow(kend, m)).toFixed(1)}"/>`;
+    }
+    pts = [];
+    for (const g of BINS) for (const q of S.bins[g].pts) {
+      if (q.a <= 0.01) continue;
+      const x = X(q.k), y = Y(q.r);
+      pts.push({ x, y, k: q.k, r: q.r, g });
+      s += `<circle class="pt p-${g}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" opacity="${q.a.toFixed(2)}"/>`;
+    }
+    s += `<circle class="pt0" cx="${X(1).toFixed(1)}" cy="${Y(1).toFixed(1)}" r="4"/>`;
+    const labs = BINS.map(g => ({ g, m: S.bins[g].m, y: Y(Math.pow(S.kmax, S.bins[g].m)) + 4 })).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < labs.length; i++) labs[i].y = Math.max(labs[i].y, labs[i - 1].y + 16);
+    const over = labs[labs.length - 1].y - (H - M.b - 2);
+    if (over > 0) labs.forEach(l => { l.y -= over; });
+    for (const l of labs)
+      s += `<text class="lab" data-g="${l.g}" x="${(X(S.kmax) + 9).toFixed(1)}" y="${l.y.toFixed(1)}" opacity="${labA.toFixed(2)}">${W < 500 ? "" : "∝ "}k${sup(fx(l.m, 2))}</text>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = s;
+    const exc = selD.value === "math500" && selM.value === "r1-qwen-distill-7b" ? " (the one flat exception)" : "";
+    out.innerHTML = `fit: m = <b>${fx(to.m, 2)}</b>&nbsp; R² = <b>${fx(to.r2, 2)}</b>${exc}`;
+    out.style.opacity = labA;
+    if (from) requestAnimationFrame(render);
+  }
+  function change() {
+    const snap = { kmax: cur.kmax, ymin: cur.ymin, bins: {} };
+    for (const g of BINS) snap.bins[g] = { m: cur.bins[g].m, pts: cur.bins[g].pts.filter(q => q.a > 0.01) };
+    to = target();
+    if (REDUCE) { from = null; render(); return; }
+    from = snap; m0 = performance.now(); requestAnimationFrame(render);
+  }
+  selD.addEventListener("change", change); selM.addEventListener("change", change);
+  hoverTip(box, svg, tip, () => pts, p => `k = ${p.k} · r = ${p.r.toFixed(2)}`);
+  const mo = onVisible($("#fig2 .frame"), { duration: 1500, draw: t => { lineP = seg(t, 0, 1200); labA = seg(t, 1050, 1500); render(); } });
+  new ResizeObserver(() => mo.redraw()).observe(box);
+})();
+
+/* ---------- fig 3: same cut, different slack ---------- */
+(function fig3() {
+  const box = $("#bplot"), svg = $("svg", box), comment = $("#bcomment");
+  const alone = [0.36, 0.56, 0.95], need = [0.13, 0.21, 0.84], F = 0.55;
+  const groups = ["low", "low", "high"];
+  function draw(t) {
+    const W = box.clientWidth; if (!W) return;
+    const L = 66, R = 34, top = 34, rowH = 42, bh = 18, H = top + rowH * 3 + 14;
+    const BW = W - L - R, x = f => L + f * BW;
+    const a0 = seg(t, 0, 400), s = seg(t, 400, 1200), c = seg(t, 1300, 1700);
+    let o = `<text class="hint" x="${L}" y="12">thinking tokens →</text>`;
+    o += `<text class="hint" x="${W - R}" y="12" text-anchor="end"><tspan font-weight="700" style="fill:var(--fg)" opacity="${a0.toFixed(2)}">× k${sup("m")}</tspan></text>`;
+    for (let i = 0; i < 3; i++) {
+      const y = top + i * rowH, w0 = alone[i] * BW, w = w0 * (1 - (1 - F) * s), nx = x(need[i]), end = L + w, g = groups[i];
+      o += `<g data-g="${g}">`;
+      o += `<text class="rowlab" x="0" y="${y + 13}">term ${i + 1}</text>`;
+      o += `<rect class="ghost" x="${L}" y="${y + 0.5}" width="${w0.toFixed(1)}" height="${bh - 1}" opacity="${seg(t, 400, 600).toFixed(2)}"/>`;
+      o += `<rect class="bar" x="${L}" y="${y}" width="${w.toFixed(1)}" height="${bh}"/>`;
+      if (end > nx) o += `<rect class="slack" x="${nx.toFixed(1)}" y="${y}" width="${(end - nx).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
+      else o += `<rect class="deficit" x="${end.toFixed(1)}" y="${y}" width="${(nx - end).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
+      o += `<line class="need" x1="${nx.toFixed(1)}" x2="${nx.toFixed(1)}" y1="${y - 5}" y2="${y + bh + 5}"/>`;
+      o += `<text class="${end > nx ? "mk-ok" : "mk-bad"}" x="${W - 6}" y="${y + 14}" text-anchor="end" opacity="${c.toFixed(2)}">${end > nx ? "✓" : "✗"}</text>`;
+      o += `</g>`;
+    }
+    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--blue)">■</tspan> slack<tspan dx="16" style="fill:var(--red)">■</tspan> deficit</text>`;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = o;
+    comment.style.opacity = seg(t, 1800, 2200);
+  }
+  const mo = onVisible($("#fig3 .frame"), { duration: 2200, draw });
+  new ResizeObserver(() => mo.redraw()).observe(box);
+})();
+
+/* ---------- fig 5 (inside details): accuracy drop vs token reduction ---------- */
+(function fig5() {
+  const det = $("#evidence"), box = $("#eplot"), svg = $("svg", box), tip = $(".tip", box);
+  const selD = $("#f5-dataset"), selM = $("#f5-model");
+  fillSelect(selD, DATASETS, "mmlu"); fillSelect(selM, MODELS, "qwen3-4b-thinking");
+  let P = 1, p0 = 0, pts = [];
+  function render() {
+    if (p0) { P = lin(performance.now() - p0, 0, 400 / SPEED); if (P >= 1) p0 = 0; }
+    const W = box.clientWidth; if (!W) return;
+    const e = D.fig5[selD.value][selM.value];
+    const H = Math.round(clamp(W * 0.58, 240, 340)), M = { l: 46, r: 12, t: 10, b: 40 };
+    const xs = BINS.flatMap(g => e[g].x), ys = BINS.flatMap(g => e[g].y);
+    const x0 = Math.max(0, Math.floor((Math.min(...xs) - 0.04) * 10) / 10), x1 = Math.min(1, Math.ceil((Math.max(...xs) + 0.03) * 10) / 10);
+    const lo = Math.min(0, ...ys), hi = Math.max(0, ...ys), st = nice((hi - lo) / 4 || 1);
+    const y0 = Math.floor(lo / st) * st, y1 = Math.ceil(hi / st) * st, pad = st * 0.15;
+    const X = v => M.l + (v - x0) / (x1 - x0) * (W - M.l - M.r);
+    const Y = v => M.t + (y1 + pad - v) / (y1 - y0 + 2 * pad) * (H - M.t - M.b);
+    const xs_ = (x1 - x0) > 0.5 ? 0.2 : 0.1, xt = [];
+    for (let v = Math.ceil(x0 / xs_ - 1e-9) * xs_; v <= x1 + 1e-9; v += xs_) xt.push([v, Math.round(v * 100) + "%"]);
+    const yt = [];
+    for (let v = y0; v <= y1 + 1e-9; v += st) yt.push([v, Math.abs(v) < 1e-9 ? "0" : (v > 0 ? "+" : "−") + Math.abs(v).toFixed(st < 1 ? 1 : 0)]);
+    let s = axes({ W, H, M, xt, yt, X, Y, xl: "token reduction, 1 − r", yl: "accuracy change (pp)" });
+    s += `<line class="zero" x1="${M.l}" x2="${W - M.r}" y1="${Y(0).toFixed(1)}" y2="${Y(0).toFixed(1)}"/>`;
+    pts = [];
+    for (const g of BINS) {
+      const d = e[g], vis = d.x.map(v => clamp((P * 1.2 - (v - x0) / (x1 - x0)) / 0.2));
+      const path = d.x.map((v, i) => vis[i] > 0 ? `${X(v).toFixed(1)},${Y(d.y[i]).toFixed(1)}` : null).filter(Boolean);
+      if (path.length > 1) s += `<polyline class="path s-${g}" data-g="${g}" points="${path.join(" ")}" opacity="0.55"/>`;
+      d.x.forEach((v, i) => {
+        if (vis[i] <= 0) return;
+        const x = X(v), y = Y(d.y[i]);
+        pts.push({ x, y, k: d.k[i], xr: v, dy: d.y[i], g });
+        s += `<circle class="pt p-${g}" data-g="${g}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.6" opacity="${vis[i].toFixed(2)}"/>`;
+      });
+    }
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
+    svg.innerHTML = s;
+    if (p0) requestAnimationFrame(render);
+  }
+  const change = () => { if (REDUCE) { P = 1; render(); return; } P = 0; p0 = performance.now(); requestAnimationFrame(render); };
+  selD.addEventListener("change", change); selM.addEventListener("change", change);
+  det.addEventListener("toggle", () => { if (det.open) render(); });
+  hoverTip(box, svg, tip, () => pts, p => `${BIN_NAME[p.g]} · k = ${p.k} · −${Math.round(p.xr * 100)}% tokens · ${p.dy >= 0 ? "+" : "−"}${Math.abs(p.dy).toFixed(1)} pp`);
+  new ResizeObserver(() => render()).observe(box);
+})();
+
+/* ---------- fig 4: random vs fragility-aware batching ---------- */
+(function fig4() {
+  const stage = $("#stage"), ctok = $("#ctok"), ccor = $("#ccor"), comment = $("#scomment");
+  const btns = [...document.querySelectorAll("#fig4 .switch button")];
+  const U = 8.6, G = 1.6, BP = 2.4, GG = 6;
+  const wide = [false, true, false, false, true, false];
+  const W = wide.map(w => (w ? 2 : 1) * U);
+  // initial row
+  const rowW = W.reduce((a, b) => a + b, 0) + 5 * G;
+  const X0 = []; { let x = (100 - rowW) / 2; W.forEach((w, i) => { X0[i] = x; x += w + G; }); }
+  function layout(groups) {
+    const gw = groups.map(g => g.reduce((a, i) => a + W[i], 0) + (g.length - 1) * G + 2 * BP);
+    let x = (100 - gw.reduce((a, b) => a + b, 0) - GG * (groups.length - 1)) / 2;
+    const pos = [], br = [];
+    groups.forEach((g, j) => {
+      br.push([x, gw[j]]);
+      let bx = x + BP; g.forEach(i => { pos[i] = bx; bx += W[i] + G; });
+      x += gw[j] + GG;
+    });
+    return { pos, br };
+  }
+  const RND = layout([[0, 1, 3], [2, 4, 5]]), AWR = layout([[0, 2, 3, 5], [1, 4]]);
+  const mk = (cls, txt = "") => { const d = document.createElement("div"); d.className = cls; d.textContent = txt; stage.appendChild(d); return d; };
+  const status = mk("status"), scan = mk("scan");
+  const brk = [mk("brk"), mk("brk")];
+  const boxes = W.map((w, i) => {
+    const el = mk("b4"); el.dataset.g = wide[i] ? "high" : "low";
+    el.innerHTML = `<div class="ghost"></div><div class="fill"><div class="tint ${wide[i] ? "r" : "b"}"></div></div>`;
+    const m = mk("mk4 neutral", "✓"), lb = mk("lb4", "T" + (i + 1));
+    m.dataset.g = el.dataset.g;
+    return { el, fill: $(".fill", el), tint: $(".tint", el), ghost: $(".ghost", el), m, lb };
+  });
+  const dots = t => "thinking " + "·".repeat(1 + Math.floor(t / 180) % 3);
+  function place(b, i, x, frac) {
+    b.el.style.left = x + "%"; b.el.style.width = W[i] + "%";
+    b.fill.style.width = (frac * 100) + "%";
+    b.m.style.left = (x + W[i] / 2) + "%"; b.lb.style.left = (x + W[i] / 2) + "%";
+  }
+  function mark(b, c, good) {
+    // flip from the neutral solved-alone tick to the composed outcome
+    const after = c >= 0.5;
+    b.m.className = "mk4 " + (after ? (good ? "ok" : "bad") : "neutral");
+    b.m.textContent = after && !good ? "✗" : "✓";
+    b.m.style.transform = `scaleY(${Math.abs(1 - 2 * c).toFixed(2)})`;
+  }
+  const RF = 2800, F0 = 3200, T = F0 + 3100;
+  function draw(t) {
+    const aware = t >= 3000;
+    btns.forEach(b => b.classList.toggle("on", (b.dataset.scene === "aware") === aware));
+    let alpha, saved = 0, correct = 6, st = "";
+    if (!aware) {
+      alpha = 1 - lin(t, RF, 3000);
+      const p = seg(t, 0, 600), s = seg(t, 700, 1300), c = lin(t, 1300, 1600);
+      RND.br.forEach(([x, w], j) => { brk[j].style.left = x + "%"; brk[j].style.width = w + "%"; brk[j].style.opacity = seg(t, 300, 600); });
+      boxes.forEach((b, i) => {
+        place(b, i, lerp(X0[i], RND.pos[i], p), 1 - 0.45 * s);
+        b.ghost.style.opacity = s > 0 ? 1 : 0; b.tint.style.opacity = 0;
+        mark(b, c, !wide[i]);
+      });
+      if (t >= 700 && t < 1300) st = dots(t - 700);
+      saved = 45 * seg(t, 1300, 1800); correct = c >= 0.5 ? 4 : 6;
+      scan.style.opacity = 0; comment.style.opacity = 0;
+    } else {
+      const u = t - F0;
+      alpha = lin(t, 3000, F0);
+      const sx = lerp(X0[0] - 1.5, X0[5] + W[5] + 1.5, lin(u, 0, 700));
+      scan.style.left = sx + "%"; scan.style.opacity = u >= 0 && u <= 700 ? 1 : 0;
+      const p = seg(u, 800, 1400), s = seg(u, 1500, 2100), c = lin(u, 2200, 2500);
+      AWR.br.forEach(([x, w], j) => { brk[j].style.left = x + "%"; brk[j].style.width = w + "%"; brk[j].style.opacity = seg(u, 1100, 1400); });
+      boxes.forEach((b, i) => {
+        place(b, i, lerp(X0[i], AWR.pos[i], p), 1 - (wide[i] ? 0.31 : 0.53) * s);
+        b.ghost.style.opacity = s > 0 ? 1 : 0;
+        b.tint.style.opacity = (0.72 * clamp((sx - X0[i]) / W[i])).toFixed(2);
+        mark(b, c, true);
+      });
+      if (u >= 0 && u < 750) st = "measure fragility";
+      else if (u >= 1500 && u < 2100) st = dots(u - 1500);
+      saved = 42 * seg(u, 2200, 2700);
+      comment.style.opacity = seg(u, 2700, 3100);
+    }
+    status.textContent = st;
+    stage.style.opacity = alpha;
+    ctok.textContent = saved < 0.5 ? "100%" : "−" + Math.round(saved) + "%";
+    ccor.textContent = correct + "/6";
+  }
+  const mo = onVisible($("#fig4 .frame"), { duration: T, draw });
+  btns.forEach(b => b.addEventListener("click", () => mo.seek(b.dataset.scene === "aware" ? T : RF)));
+})();
+
+/* ---------- Table 2 ---------- */
+(function table() {
+  const T = {
+    "gpqa-diamond": ["GPQA-Diamond", `Qwen3 4B T.|66.7|7663|56.4|-10.3|2470|-67.8|66.8|+0.2|5200|-32.1|67.3|+0.7|7534|-1.7
+Qwen3 8B|58.7|5973|53.4|-5.3|1950|-67.4|60.0|+1.3|3520|-41.1|56.9|-1.8|5106|-14.5
+Qwen3 14B|61.5|4597|51.8|-9.7|1500|-67.4|57.9|-3.7|2111|-54.1|61.3|-0.2|3665|-20.3
+Qwen3.8 27B|83.2|4303|79.2|-4.0|2740|-36.3|84.0|+0.8|4102|-4.7|85.3|+2.1|4324|+0.5
+R1 Qwen 7B|49.1|6686|23.6|-25.5|1305|-80.5|49.6|+0.5|4037|-39.6|46.7|-2.4|5953|-11.0
+R1 Llama 8B|47.7|7424|32.1|-15.6|1771|-76.2|49.6|+1.9|4526|-39.0|48.6|+0.9|5816|-21.7
+R1 Qwen3 8B|60.8|9084|48.1|-12.6|2398|-73.6|61.9|+1.2|6595|-27.4|59.8|-1.0|8877|-2.3
+Claude Opus 5|89.5|689|88.7|-0.9|564|-18.2|89.2|-0.4|521|-24.3|87.6|-2.0|686|-0.5`, "64.7|5802|-10.5|-60.9|+0.2|-32.8|-0.5|-8.9"],
+    "gsm8k": ["GSM8K", `Qwen3 4B T.|95.2|1151|91.9|-3.3|472|-59.0|93.4|-1.8|467|-59.5|94.9|-0.3|793|-31.2
+Qwen3 8B|95.4|769|95.2|-0.2|371|-51.8|95.0|-0.4|279|-63.7|95.1|-0.3|537|-30.1
+Qwen3 14B|96.1|587|95.9|-0.2|253|-56.9|95.9|-0.2|200|-66.0|95.7|-0.3|314|-46.6
+Qwen3.8 27B|97.4|263|97.5|+0.1|200|-24.0|97.5|+0.1|158|-40.1|97.5|0.0|157|-40.1
+R1 Qwen 7B|91.4|834|87.5|-3.9|187|-77.6|90.8|-0.7|308|-63.1|91.6|+0.1|824|-1.2
+R1 Llama 8B|89.5|685|81.8|-7.8|278|-59.4|89.3|-0.2|672|-1.9|89.4|-0.1|797|+16.4
+R1 Qwen3 8B|92.8|2377|91.8|-1.0|795|-66.6|93.0|+0.2|911|-61.7|92.8|0.0|2163|-9.0`, "94.0|952|-2.3|-56.5|-0.4|-50.8|-0.1|-20.3"],
+    "math500": ["MATH-500", `Qwen3 4B T.|97.6|4064|96.4|-1.1|2148|-47.2|97.7|+0.1|3716|-8.6|96.8|-0.8|3605|-11.3
+Qwen3 8B|95.9|3449|95.6|-0.3|1751|-49.2|95.1|-0.8|2173|-37.0|95.9|+0.1|2775|-19.5
+Qwen3 14B|96.9|2604|95.9|-1.0|1375|-47.2|96.6|-0.2|2454|-5.8|96.6|-0.2|2444|-6.2
+Qwen3.8 27B|98.1|1014|96.7|-1.5|748|-26.2|97.8|-0.4|943|-7.1|97.2|-0.9|994|-2.0
+R1 Qwen 7B|93.0|2383|69.8|-23.2|1658|-30.4|93.2|+0.2|2205|-7.5|93.4|+0.4|2381|-0.1
+R1 Llama 8B|88.7|3019|79.4|-9.3|1569|-48.0|88.5|-0.2|2948|-2.3|88.8|+0.2|3333|+10.4
+R1 Qwen3 8B|96.8|6767|93.0|-3.8|3705|-45.2|96.6|-0.2|6608|-2.4|96.7|-0.2|6657|-1.6`, "95.3|3329|-5.7|-41.9|-0.2|-10.1|-0.2|-4.3"],
+    "integrals": ["Integrals", `Qwen3 4B T.|99.9|1914|99.2|-0.7|1029|-46.3|99.7|-0.2|1411|-26.3|99.6|-0.3|908|-52.6
+Qwen3 8B|99.7|2887|98.8|-0.9|946|-67.2|99.8|+0.1|2717|-5.9|98.8|-0.9|1192|-58.7
+Qwen3 14B|99.8|2321|99.0|-0.8|670|-71.1|99.5|-0.3|1335|-42.5|99.6|-0.2|756|-67.4
+Qwen3.8 27B|99.8|724|98.8|-1.0|564|-22.1|99.5|-0.3|624|-13.8|99.6|-0.2|550|-24.0
+R1 Qwen 7B|96.4|2519|90.8|-5.5|547|-78.3|96.0|-0.4|2277|-9.6|96.3|0.0|2291|-9.0
+R1 Llama 8B|93.7|2462|86.7|-7.0|613|-75.1|93.1|-0.6|2161|-12.2|93.6|-0.1|1926|-21.8
+R1 Qwen3 8B|98.5|4082|96.7|-1.8|1339|-67.2|97.9|-0.6|4344|+6.4|98.5|0.0|2701|-33.8`, "98.3|2416|-2.5|-61.0|-0.3|-14.8|-0.3|-38.2"],
+    "mmlu": ["MMLU-Redux", `Qwen3 4B T.|84.7|1944|82.9|-1.8|527|-72.9|85.3|+0.6|527|-72.9|84.9|+0.2|1663|-14.5
+Qwen3 8B|87.2|921|84.0|-3.3|306|-66.7|86.1|-1.1|285|-69.0|86.9|-0.3|922|+0.2
+Qwen3 14B|89.0|718|85.8|-3.3|212|-70.5|88.2|-0.9|319|-55.6|88.3|-0.7|678|-5.5
+Qwen3.8 27B|92.4|488|91.9|-0.5|262|-46.4|91.8|-0.6|196|-59.8|92.1|-0.3|352|-27.9
+R1 Qwen 7B|70.1|1079|60.6|-9.5|397|-63.2|69.7|-0.3|601|-44.3|70.4|+0.3|1127|+4.5
+R1 Llama 8B|75.5|1458|58.6|-16.9|431|-70.4|75.9|+0.3|896|-38.5|75.3|-0.2|1430|-1.9
+R1 Qwen3 8B|81.6|1711|64.5|-17.1|279|-83.7|82.1|+0.5|1273|-25.6|82.2|+0.6|1714|+0.2`, "82.9|1188|-7.5|-67.7|-0.2|-52.2|-0.1|-6.4"],
+    "onewordqa": ["OneWordQA", `Qwen3 4B T.|92.0|668|92.1|+0.1|383|-42.6|91.7|-0.3|179|-73.2|91.8|-0.2|185|-72.4
+Qwen3 8B|91.7|212|92.0|+0.3|71|-66.7|92.1|+0.4|46|-78.2|92.2|+0.5|46|-78.1
+Qwen3 14B|92.4|207|92.8|+0.4|73|-64.6|93.2|+0.7|48|-76.6|93.3|+0.9|47|-77.1
+Qwen3.8 27B|93.3|71|93.4|+0.1|40|-43.8|93.4|+0.2|36|-50.0|93.4|+0.2|35|-51.3
+R1 Qwen 7B|72.0|454|76.5|+4.4|105|-76.8|76.5|+4.4|98|-78.3|77.1|+5.0|89|-80.4
+R1 Llama 8B|78.0|484|84.0|+6.0|86|-82.2|83.5|+5.5|74|-84.6|84.0|+6.0|81|-83.3
+R1 Qwen3 8B†|81.5|328|28.6|-52.9|136|-58.6|82.1|+0.6|354|+7.8|82.3|+0.8|322|-1.7`, "86.6|349|+1.9|-62.8|+1.8|-73.5|+2.1|-73.8"],
+    "strategyqa": ["StrategyQA", `Qwen3 4B T.|63.2|836|67.7|+4.5|509|-39.1|68.2|+5.0|248|-70.4|67.4|+4.1|246|-70.6
+Qwen3 8B|70.1|394|72.1|+1.9|96|-75.6|71.8|+1.7|57|-85.4|70.8|+0.7|52|-86.8
+Qwen3 14B|70.0|366|73.2|+3.3|84|-77.1|73.5|+3.5|60|-83.6|73.4|+3.4|54|-85.3
+Qwen3.8 27B|79.4|224|80.2|+0.8|151|-32.4|81.8|+2.4|145|-35.0|81.0|+1.6|144|-35.5
+R1 Qwen 7B|56.9|651|58.9|+2.0|84|-87.1|58.5|+1.6|57|-91.2|57.8|+0.8|47|-92.8
+R1 Llama 8B|58.9|446|65.6|+6.7|81|-81.9|65.2|+6.3|95|-78.7|64.6|+5.6|51|-88.5
+R1 Qwen3 8B|70.0|606|67.7|-2.3|89|-85.4|71.1|+1.1|425|-29.9|69.9|-0.1|629|+3.8`, "66.9|503|+2.4|-68.4|+3.1|-67.7|+2.3|-65.1"],
+  };
+  const ORDER = ["gpqa-diamond", "gsm8k", "math500", "integrals", "mmlu", "onewordqa", "strategyqa"];
+  const sel = $("#t-dataset"), tbl = $("#rtable"), notes = $("#tnotes");
+  fillSelect(sel, ORDER.map(k => [k, T[k][0]]), "gpqa-diamond");
+  const acc = (a, d, grey) => `<td class="sep${!grey && parseFloat(d) <= -1 ? " neg" : ""}">${a}% <small>(${minus(d)})</small></td>`;
+  const tok = (v, d) => `<td>${v} <small>(${minus(d)}%)</small></td>`;
+  function render() {
+    const [, rows, avg] = T[sel.value];
+    let h = `<thead><tr><th></th><th colspan="2">isolated, k = 1</th><th colspan="2" class="sep">random, k = 6</th><th colspan="2" class="sep">fragility-aware (measured)</th><th colspan="2" class="sep">fragility-aware (probe)</th></tr>
+<tr><th>model</th><th>acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th><th class="sep">acc.</th><th>tok.</th></tr></thead><tbody>`;
+    for (const line of rows.split("\n")) {
+      const c = line.split("|"), grey = c[0].endsWith("†");
+      h += `<tr${grey ? ' class="grey"' : ""}><td>${c[0]}</td><td>${c[1]}%</td><td>${c[2]}</td>`;
+      [[3, 4, 5, 6], [7, 8, 9, 10], [11, 12, 13, 14]].forEach(([a, d, v, dv]) => {
+        h += acc(c[a], c[d], grey) + tok(c[v], c[dv]);
+      });
+      h += "</tr>";
+    }
+    const a = avg.split("|");
+    const ac = v => `<td class="sep${parseFloat(v) <= -1 ? " neg" : ""}">${minus(v)}</td>`;
+    h += `<tr class="avg"><td>Average</td><td>${a[0]}%</td><td>${a[1]}</td>${ac(a[2])}<td>${minus(a[3])}%</td>${ac(a[4])}<td>${minus(a[5])}%</td>${ac(a[6])}<td>${minus(a[7])}%</td></tr></tbody>`;
+    tbl.innerHTML = h;
+    notes.innerHTML = "Accuracy and output tokens per task (thinking plus answer); changes against k = 1 in parentheses, in pp for accuracy and in % for tokens. Accuracy losses of 1 pp or more are red."
+      + (sel.value === "onewordqa" ? " † R1 Qwen3 8B breaks the answer format under composition on OneWordQA, which causes parsing errors, so the Average leaves it out." : "")
+      + (sel.value === "gpqa-diamond" ? " Claude Opus 5 is measured with fewer trials to limit cost." : "")
+      + " AIME is missing because nearly every task degrades already at k = 3, so fragility-aware batching keeps almost every task alone.";
+  }
+  sel.addEventListener("change", render); render();
+})();
+
+/* ---------- page furniture ---------- */
+document.querySelectorAll("a.todo").forEach(a => a.addEventListener("click", e => e.preventDefault()));
+addEventListener("beforeprint", () => document.querySelectorAll("details").forEach(d => { d.open = true; }));
+
+// coloured keywords pick out the matching marks in the figures
+document.querySelectorAll("[data-focus]").forEach(el => {
+  el.addEventListener("mouseenter", () => { document.body.dataset.focus = el.dataset.focus; });
+  el.addEventListener("mouseleave", () => { delete document.body.dataset.focus; });
+});
+
+// margin notes sit level with their footnote mark on wide screens
+const wideQ = matchMedia("(min-width: 1200px)");
+function placeNotes() {
+  const col = $(".col"), cr = col.getBoundingClientRect();
+  let floor = -Infinity;
+  document.querySelectorAll(".sn").forEach(n => {
+    if (!wideQ.matches) { n.style.top = ""; return; }
+    const ref = $(`.fn[data-fn="${n.dataset.for}"]`);
+    let top = ref.getBoundingClientRect().top - cr.top - 4;
+    top = Math.max(top, floor + 10);
+    n.style.top = top + "px";
+    floor = top + n.offsetHeight;
+  });
+}
+wideQ.addEventListener("change", placeNotes);
+addEventListener("resize", placeNotes);
+new ResizeObserver(placeNotes).observe($(".col"));
+document.fonts && document.fonts.ready.then(placeNotes);
+placeNotes();
+
+// a footnote mark and its margin note light up together
+document.querySelectorAll(".sn").forEach(n => {
+  const ref = $(`.fn[data-fn="${n.dataset.for}"]`);
+  const on = v => () => { n.classList.toggle("lit", v); ref.classList.toggle("lit", v); };
+  [n, ref].forEach(el => { el.addEventListener("mouseenter", on(true)); el.addEventListener("mouseleave", on(false)); });
+});
+
+// section rail
+const rail = [...document.querySelectorAll(".rail a")], secs = rail.map(a => document.getElementById(a.dataset.s));
+function onScroll() {
+  const y = innerHeight * 0.4;
+  let on = -1;
+  secs.forEach((s, i) => { if (s.getBoundingClientRect().top < y) on = i; });
+  if (on === secs.length - 1 && $("#cite").getBoundingClientRect().top < y) on = -1;
+  rail.forEach((a, i) => a.classList.toggle("on", i === on));
+  $(".rail").classList.toggle("live", secs[0].getBoundingClientRect().top < innerHeight * 0.6);
+}
+addEventListener("scroll", () => requestAnimationFrame(onScroll), { passive: true });
+onScroll();
+
+// copy BibTeX
+$("#copy").addEventListener("click", () => {
+  const code = $("#bib code"), btn = $("#copy");
+  const done = () => { btn.textContent = "[copied]"; setTimeout(() => { btn.textContent = "[copy]"; }, 1600); };
+  const select = () => { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "[selected, press ⌘C]"; };
+  try { navigator.clipboard.writeText(code.textContent).then(done, select); } catch (e) { select(); }
+});
+})();
+</script>
+</body>
+</html>
