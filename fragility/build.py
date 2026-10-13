@@ -11,7 +11,7 @@ import pathlib
 import sys
 
 HERE = pathlib.Path(__file__).parent
-DESCRIPTION = ("Language models fail on compositions of tasks they solve alone, because they cut "
+DESCRIPTION = ("Language models fail on compositions of tasks they solve alone, because they reduce "
                "every task's thinking by the same factor. Fragility-aware batching saves 43% of "
                "tokens at unchanged accuracy.")
 
