@@ -10,6 +10,7 @@
   --accent: #0D9488;
   --wash-yellow: #F9ECCB; --wash-blue: #DCE7F3; --wash-red: #F5D9D8;
   --red: #C8413F; --yellow: #E6B33D; --blue: #2F6FB0;
+  --matte-blue: #8CA6C2; --matte-red: #CB8A87;
   --code: #F6F6F4; --syn-red: #B5544F; --syn-yellow: #9A7A2E; --syn-blue: #3F6F9E;
   --serif: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -36,8 +37,6 @@ h1 { font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: -0.00
 .authors .au { color: var(--accent); white-space: nowrap; }
 .logos { display: flex; align-items: center; gap: 26px; margin: 0 0 18px; }
 .logos img { display: block; height: 22px; width: auto; }
-.links { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 16px; margin: 0; }
-.links a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .hero-links { display: flex; gap: 32px; align-items: flex-start; padding-top: 22px; border-top: 1px dotted var(--fg); }
 .pv.code { margin-top: 0; }
 .pv { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 19px; color: var(--accent); }
@@ -49,14 +48,14 @@ h1 { font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: -0.00
   box-shadow: 4px 4px 0 -1px #FFFFFF, 4px 4px 0 0 #B9B9B9, 8px 8px 0 -1px #FFFFFF, 8px 8px 0 0 #B9B9B9; }
 .pv .card { width: 152px; height: auto; border: 1px solid #1A1A1A; }
 @media (min-width: 1280px) {
-  .hero { width: calc(100% + 220px); grid-template-columns: minmax(0, 1fr) auto; gap: 0; }
-  .hero-links { flex-direction: column; align-items: center; gap: 26px; border-top: 0; padding-top: 6px; border-left: 1px dotted var(--fg); margin-left: 34px; padding-left: 34px; align-self: stretch; }
+  .hero { position: relative; }
+  .hero-links { position: absolute; top: 0; left: 100%; flex-direction: column; align-items: center; gap: 26px; border-top: 0; padding-top: 6px; padding-bottom: 4px; border-left: 1px dotted var(--fg); margin-left: 34px; padding-left: 34px; }
 }
 .tldr { margin: 30px 0 0; font-size: 19px; line-height: 1.75; text-wrap: pretty; }
 .tldr .tl { font-weight: 600; }
 .mk-y, .mk-b, .mk-r { color: inherit; padding: 1px 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .mk-y { background: var(--wash-yellow); } .mk-b { background: var(--wash-blue); } .mk-r { background: var(--wash-red); }
-.teaser { margin: 40px 0 0; }
+.teaser { margin: 22px 0 0; }
 .teaser img { display: block; width: 100%; height: auto; }
 .rule { height: 1px; background: var(--faint); margin: calc(var(--lh) * 2.2) 0 0; }
 .rule + section { margin-top: calc(var(--lh) * 2.2); }
@@ -69,14 +68,10 @@ section { margin-top: calc(var(--lh) * 3.6); scroll-margin-top: 32px; }
 
 /* text devices */
 blockquote { margin: 28px 0; padding: 2px 0 2px 22px; border-left: 3px solid var(--faint); font-size: 19px; line-height: 1.5; font-style: italic; }
-.key { border-left: 2px solid var(--fg); padding-left: 20px; margin-block: var(--lh); }
-.hl { background: var(--yellow); color: #1A1A1A; padding: 0 0.2em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.key { margin-block: var(--lh); padding: 14px 18px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 8%, #FFFFFF); }
 .hi, .lo { font-weight: 650; cursor: default; }
 .hi { color: var(--red); }
 .lo { color: var(--blue); }
-.bulb { display: inline-block; vertical-align: -2px; margin-right: 3px; }
-.bulb-glass { fill: var(--yellow); stroke: var(--fg); stroke-width: 1.2; stroke-linejoin: round; }
-.bulb-base { fill: none; stroke: var(--fg); stroke-width: 1.2; stroke-linecap: round; }
 .tok { background: color-mix(in srgb, var(--yellow) 32%, transparent); padding: 0 0.2em; }
 .fn { color: var(--accent); font-size: 0.68em; vertical-align: super; line-height: 0; padding-left: 1px; }
 
@@ -88,12 +83,12 @@ blockquote { margin: 28px 0; padding: 2px 0 2px 22px; border-left: 3px solid var
 .sn.lit { color: var(--fg); }
 .fn.lit { background: color-mix(in srgb, var(--yellow) 32%, transparent); }
 @media (min-width: 1200px) {
-  .sn { position: absolute; left: calc(100% + 40px); width: 210px; margin: 0; opacity: .7; transition: opacity .15s, color .15s; }
+  .sn { position: absolute; left: calc(100% + 40px); width: min(210px, calc(50vw - 426px)); margin: 0; opacity: .7; transition: opacity .15s, color .15s; }
   .sn.lit, .sn:hover { opacity: 1; }
 }
 
 /* section rail */
-.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 340px - 52px); height: min(340px, 54vh); flex-direction: column; gap: 8px; z-index: 2; }
+.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 340px - 52px); height: min(400px, 64vh); flex-direction: column; gap: 8px; z-index: 2; }
 @media (min-width: 1200px) { .rail { display: flex; } }
 .rail a { flex: 1; position: relative; width: 22px; }
 .rail a:hover { text-decoration: none; }
@@ -160,8 +155,8 @@ figcaption .fl { color: var(--fg); font-weight: 650; }
 .bars .bar { fill: var(--box); }
 .bars .ghost { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; }
 .bars .need { stroke: var(--fg); stroke-width: 1.5; stroke-dasharray: 2 2; }
-.bars .slack { fill: var(--blue); }
-.bars .deficit { fill: var(--red); }
+.bars .slack { fill: var(--matte-blue); }
+.bars .deficit { fill: var(--matte-red); }
 .bars .rowlab { fill: var(--fg); font: 13px var(--serif); }
 .bars .hint { fill: var(--muted); font: 12px var(--serif); }
 .bars .mk-ok { fill: var(--blue); font: 700 15px var(--serif); }
@@ -220,8 +215,7 @@ tr.grey td, tr.grey td small { color: var(--muted); }
 td.sep, th.sep { border-left: 1px solid var(--faint); }
 .tnotes { font-size: 13px; color: var(--muted); margin-top: 8px; }
 
-/* closing and footer */
-.closing { margin-top: calc(var(--lh) * 2); }
+/* citation and footer */
 pre.bib { position: relative; margin: 0; font: 12.5px/1.65 var(--mono); color: var(--fg); background: var(--code); border: 1px solid var(--faint); border-radius: 6px; padding: 16px 18px; overflow-x: auto; white-space: pre-wrap; }
 .sy-r { color: var(--syn-red); } .sy-y { color: var(--syn-yellow); } .sy-b { color: var(--syn-blue); }
 @media (max-width: 520px) { pre.bib { padding-top: 34px; } }
@@ -229,6 +223,8 @@ pre.bib { position: relative; margin: 0; font: 12.5px/1.65 var(--mono); color: v
 .copy:hover { color: var(--fg); border-color: var(--muted); }
 .foot { font-size: 13.5px; line-height: 1.6; color: var(--muted); margin-top: var(--lh); }
 .foot p { margin: 0 0 8px; }
+.foot .credit { margin-top: 18px; font-size: 11.5px; }
+.foot .credit a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 2px; }
 
 /* hovering a coloured keyword picks out the matching marks in every figure */
 [data-g] { transition: opacity .2s ease-out; }
@@ -260,7 +256,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <a href="#s2" data-s="s2"><i></i><span><b>2</b>What does implicit budgeting look like?</span></a>
   <a href="#s3" data-s="s3"><i></i><span><b>3</b>What tasks fail under composition?</span></a>
   <a href="#s4" data-s="s4"><i></i><span><b>4</b>Exploiting implicit budgeting for efficient inference</span></a>
-  <a href="#cite" data-s="cite"><i></i><span><b>5</b>How to cite this work?</span></a>
+  <a href="#s5" data-s="s5"><i></i><span><b>5</b>Discussion &amp; Implications</span></a>
+  <a href="#cite" data-s="cite"><i></i><span><b>6</b>How to cite this work?</span></a>
 </nav>
 
 <main class="col" id="top">
@@ -272,11 +269,6 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
         <img src="assets/tum.svg" alt="Technical University of Munich" width="42" height="22">
         <img src="assets/mit.svg" alt="MIT" width="42" height="22">
       </div>
-      <nav class="links" aria-label="Paper links">
-        <a class="todo" href="#">Paper</a>
-        <a class="todo" href="#">arXiv</a>
-        <a href="#cite">BibTeX</a>
-      </nav>
     </div>
     <nav class="hero-links" aria-label="Paper and code">
       <a class="pv todo" href="#"><span>Paper</span><img class="paper" src="assets/paper-page1.png" alt="First page of the paper" width="78" height="101"></a>
@@ -291,7 +283,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
 
   <!-- 1 -->
   <section id="s1" data-sec>
-    <h2><span class="num">1</span><span class="t">composing tasks causes performance degradation</span></h2>
+    <h2><span class="num">1</span><span class="t">What is compositional degradation?</span></h2>
     <p>A <em>composition</em> is built from several independent constituent tasks, which are pasted into one prompt and answered in order. We keep only tasks a model solves in 3 out of 3 isolated attempts, then compose them. Even for these reliably solved tasks, an accuracy drop shows up for all tested models across math and language datasets.<span class="fn" data-fn="1">1</span><span class="fn">,</span><span class="fn" data-fn="2">2</span></p>
     <aside class="sn" data-for="1"><sup>1</sup>It is not error accumulation. If composition had no effect, we would expect the accuracy drop to be close to 0.</aside>
     <aside class="sn" data-for="2"><sup>2</sup>Nor is it context length. Most responses use under 25% of the context window, and in most datasets fewer than 1% hit the limit.</aside>
@@ -320,11 +312,9 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
 
   <!-- 2 -->
   <section id="s2" data-sec>
-    <h2><span class="num">2</span><span class="t">degradation as a misallocation of the implicit thinking budget</span></h2>
-    <p>To observe how thinking tokens are distributed, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) measures how much of the thinking tokens used in isolation remains when the task is placed in a composition of k tasks.</p>
-    <p>It falls as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. In plain terms, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
-    <p class="key">Under composition, LLMs reduce the thinking tokens of every task by roughly the same proportion, a factor of k<sup>m</sup>.<span class="fn" data-fn="3">3</span></p>
-    <aside class="sn" data-for="3"><sup>3</sup>The model does this voluntarily. The prompt sets no per-task limit and the context window is far from full, so the model rations on its own.</aside>
+    <h2><span class="num">2</span><span class="t">What does implicit budgeting look like?</span></h2>
+    <p>To observe how thinking tokens are distributed, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.</p>
+    <p>Measured across many open-weight LLMs, the token ratio falls as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. In plain terms, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
 
     <figure id="fig2">
       <div class="frame" aria-label="Log-log chart of token ratio against tasks per composition. For every model and dataset the three length bins fall along straight lines through (1, 1), the power law r approximately k to the m.">
@@ -335,11 +325,14 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
       </div>
       <figcaption><span class="fl">Figure 2.</span> Thinking per task relative to solving it alone. Lines bin tasks by the thinking tokens they use in isolation (red long, yellow medium, blue short). Line: fitted k<sup>m</sup>.</figcaption>
     </figure>
+
+    <p class="key">Under composition, LLMs reduce thinking tokens for each task, by applying roughly the same proportional reduction (with factor k<sup>m</sup>) to all of them.<span class="fn" data-fn="3">3</span></p>
+    <aside class="sn" data-for="3"><sup>3</sup>The model does this voluntarily. The prompt sets no per-task limit and the context window is far from full, so the model rations on its own.</aside>
   </section>
 
   <!-- 3 -->
   <section id="s3" data-sec>
-    <h2><span class="num">3</span><span class="t">some tasks can afford it, some can't</span></h2>
+    <h2><span class="num">3</span><span class="t">What tasks fail under composition?</span></h2>
     <p>The same reduction causes highly uneven degradation. <span class="hi" data-focus="high">High-effort</span> tasks, the ones with long thinking traces alone, lose the most accuracy.<span class="fn" data-fn="4">4</span> We call these tasks <span class="hi" data-focus="high">fragile</span>, whereas tasks that are robust to this reduction we call <span class="lo" data-focus="low">non-fragile</span>, since they show almost no degradation.<span class="fn" data-fn="5">5</span><span class="fn">,</span><span class="fn" data-fn="6">6</span></p>
     <aside class="sn" data-for="4"><sup>4</sup>An analogous effect arises when a solo task is forced to stop thinking at its composed budget.</aside>
     <aside class="sn" data-for="5"><sup>5</sup>Q: Why is the degradation so uneven? A: Short traces carry slack, more thinking than the task needs. High-effort tasks are more vulnerable because they actually need that many thinking tokens to be solved.</aside>
@@ -371,8 +364,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
 
   <!-- 4 -->
   <section id="s4" data-sec>
-    <h2><span class="num">4</span><span class="t">exploiting implicit budgeting for efficient inference</span></h2>
-    <p><svg class="bulb" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M8 1.5a4.6 4.6 0 0 0-2.7 8.3c.5.4.8 1 .8 1.6v.6h3.8v-.6c0-.6.3-1.2.8-1.6A4.6 4.6 0 0 0 8 1.5z" class="bulb-glass"/><path d="M6.2 13.6h3.6M6.7 15h2.6" class="bulb-base"/></svg> <b>Fragility-aware batching.</b> The composition size k controls how much thinking each task gets. So put <span class="lo" data-focus="low">non-fragile</span> tasks into large batches to save tokens, and keep <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</p>
+    <h2><span class="num">4</span><span class="t">Exploiting implicit budgeting for efficient inference</span></h2>
+    <p class="key"><b>Fragility-aware batching.</b> The composition size k controls how much thinking each task gets. So put <span class="lo" data-focus="low">non-fragile</span> tasks into large batches to save tokens, and keep <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</p>
     <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy unchanged (+0.6 pp). Random batching saves more tokens in the end, but in most cases it comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing only 0.4 pp. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
 
     <figure id="fig4">
@@ -400,16 +393,19 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
       </div>
     </details>
 
-    <div class="rule" aria-hidden="true"></div>
-    <div class="closing">
-      <p><b>Implicit budgeting in LLMs acts as a double-edged sword.</b> Under composition, <span class="hi" data-focus="high">fragile</span> tasks receive too little reasoning and fail. In isolation, <span class="lo" data-focus="low">non-fragile</span> tasks receive more reasoning than they need and waste compute.</p>
-      <p>Future training should fix budgeting, for example through post-training. For current models, we show that regrouping tasks already brings large benefits.</p>
-    </div>
   </section>
 
   <!-- 5 -->
+  <section id="s5" data-sec>
+    <h2><span class="num">5</span><span class="t">Discussion &amp; Implications</span></h2>
+    <p><b>Previous context can cause degradation too.</b> We deliberately compose independent tasks of the same type, isolating the budget effect in its simplest form. Prior work finds that reasoning traces also shorten when the same task is embedded in irrelevant context, conversation history, or a larger task (<a href="https://arxiv.org/abs/2604.01161">Rodionov et al., 2026</a>), suggesting that implicit thinking budgeting may extend beyond same-type composition.</p>
+    <p><b>Long-running agents in production.</b> This is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as context rot (<a href="https://trychroma.com/research/context-rot">Hong et al., 2025</a>). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
+    <p><b>Post-training as a potential mitigation.</b> Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.</p>
+  </section>
+
+  <!-- 6 -->
   <section id="cite">
-    <h2><span class="num">5</span><span class="t">cite</span></h2>
+    <h2><span class="num">6</span><span class="t">How to cite this work?</span></h2>
 <pre class="bib" id="bib"><button class="copy" type="button" id="copy">Copy</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
   <span class="sy-b">title</span> = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
   <span class="sy-b">author</span> = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
@@ -418,6 +414,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
     <div class="foot">
       <p>Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
       <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
+      <p class="credit">Page design inspired by <a href="https://www.sophielwang.com/cues">Base Models Can Reason By Taking a Cue From Training Data</a>, <a href="https://unpaired-multimodal.github.io/">Unpaired Multimodal Learning</a> and <a href="https://phillipi.github.io/prh/">The Platonic Representation Hypothesis</a>.</p>
     </div>
   </section>
 </main>
@@ -671,13 +668,13 @@ function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
       o += `<text class="rowlab" x="0" y="${y + 13}">term ${i + 1}</text>`;
       o += `<rect class="ghost" x="${L}" y="${y + 0.5}" width="${w0.toFixed(1)}" height="${bh - 1}" opacity="${seg(t, 400, 600).toFixed(2)}"/>`;
       o += `<rect class="bar" x="${L}" y="${y}" width="${w.toFixed(1)}" height="${bh}"/>`;
-      if (end > nx) o += `<rect class="slack" x="${nx.toFixed(1)}" y="${y}" width="${(end - nx).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
-      else o += `<rect class="deficit" x="${end.toFixed(1)}" y="${y}" width="${(nx - end).toFixed(1)}" height="${bh}" opacity="${(0.75 * c).toFixed(2)}"/>`;
+      if (end > nx) o += `<rect class="slack" x="${nx.toFixed(1)}" y="${y}" width="${(end - nx).toFixed(1)}" height="${bh}" opacity="${c.toFixed(2)}"/>`;
+      else o += `<rect class="deficit" x="${end.toFixed(1)}" y="${y}" width="${(nx - end).toFixed(1)}" height="${bh}" opacity="${c.toFixed(2)}"/>`;
       o += `<line class="need" x1="${nx.toFixed(1)}" x2="${nx.toFixed(1)}" y1="${y - 5}" y2="${y + bh + 5}"/>`;
       o += `<text class="${end > nx ? "mk-ok" : "mk-bad"}" x="${W - 6}" y="${y + 14}" text-anchor="end" opacity="${c.toFixed(2)}">${end > nx ? "✓" : "✗"}</text>`;
       o += `</g>`;
     }
-    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--blue)">■</tspan> slack<tspan dx="16" style="fill:var(--red)">■</tspan> deficit</text>`;
+    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--matte-blue)">■</tspan> slack<tspan dx="16" style="fill:var(--matte-red)">■</tspan> deficit</text>`;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
     svg.innerHTML = o;
     comment.style.opacity = seg(t, 1800, 2200);
@@ -737,7 +734,7 @@ function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
   const stage = $("#stage"), ctok = $("#ctok"), ccor = $("#ccor"), comment = $("#scomment");
   const btns = [...document.querySelectorAll("#fig4 .switch button")];
   const U = 8.6, G = 1.6, BP = 2.4, GG = 6;
-  const wide = [false, true, false, false, true, false];
+  const wide = [false, true, false, false, false, true];
   const W = wide.map(w => (w ? 2 : 1) * U);
   // initial row
   const rowW = W.reduce((a, b) => a + b, 0) + 5 * G;
@@ -753,7 +750,7 @@ function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
     });
     return { pos, br };
   }
-  const RND = layout([[0, 1, 3], [2, 4, 5]]), AWR = layout([[0, 2, 3, 5], [1, 4]]);
+  const RND = layout([[0, 1, 3], [2, 4, 5]]), AWR = layout([[0, 2, 3, 4], [1, 5]]);
   const mk = (cls, txt = "") => { const d = document.createElement("div"); d.className = cls; d.textContent = txt; stage.appendChild(d); return d; };
   const status = mk("status"), scan = mk("scan");
   const brk = [mk("brk"), mk("brk")];
