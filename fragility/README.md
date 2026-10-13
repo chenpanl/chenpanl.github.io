@@ -6,7 +6,7 @@ Project page for *On the Fragility of Tasks under Composition: Implicit Budgetin
 
 ## Edit
 
-Change `src/page.html`, then rebuild from this folder:
+To change only the text, edit `draft.md` and ask Claude to apply it (see `CLAUDE.md`). Otherwise change `src/page.html`, then rebuild from this folder:
 
 ```bash
 python3 build.py
