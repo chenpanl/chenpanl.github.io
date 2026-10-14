@@ -22,7 +22,7 @@ Conventions
 Chenpan Li\*, Thies Brockmoeller,
 Stefanie Jegelka, Sharut Gupta◇, Nikolaos Karalias◇
 
-[TUM logo] [MIT logo] · Paper (first-page preview) · Code (GitHub preview, github.com/chenpanl/implicit-thinking-budgets)
+[TUM logo] [MIT logo] · [Paper] (first-page preview) · [Code] (GitHub preview, github.com/chenpanl/implicit-thinking-budgets)
 
 [[Main figure: paper Figure 1, no caption]]
 
@@ -130,12 +130,14 @@ Also, due to limited training data availability, the linear probe currently does
 
 ## 5 Discussion & Implications
 
-We have shown that the misallocation of the implicit thinking budget can act two ways, like a [double-edged sword]{.mk-y}. On the one hand, it causes [degradation under composition]{.mk-r} and [reasoning overspending]{.mk-r} in isolation. On the other hand, this misallocation can be manipulated to [save tokens without impacting accuracy]{.mk-b}. Since LLMs are already heavily used in production, what do our results imply?
+> [!KEY] We have shown that the misallocation of the implicit thinking budget can act two ways, like a [double-edged sword]{.mk-y}. On the one hand, it causes [degradation under composition]{.mk-r} and [reasoning overspending]{.mk-r} in isolation. On the other hand, this misallocation can be manipulated to [save tokens without impacting accuracy]{.mk-b}. Since LLMs are already heavily used in production, what do our results imply?
 
 **Long-running agents in production.** Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as [context rot](https://trychroma.com/research/context-rot). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.
 
 **Post-training as a potential mitigation.** Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.
 
+
+---
 
 ## Citation
 

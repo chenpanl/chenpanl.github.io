@@ -18,7 +18,7 @@
 :root {
   color-scheme: light;
   --bg: #FFFFFF; --fg: #1A1A1A; --muted: #6B6B6B; --faint: #E3E3E3; --wash: #F5F5F5; --box: #D6D6D6;
-  --accent: #0D9488;
+  --accent: #444444;
   --wash-yellow: #F9ECCB; --wash-blue: #DCE7F3; --wash-red: #F5D9D8;
   --red: #C8413F; --yellow: #E6B33D; --blue: #2F6FB0;
   --matte-blue: #8CA6C2; --matte-red: #CB8A87;
@@ -293,8 +293,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
       </div>
     </div>
     <nav class="hero-links" aria-label="Paper and code">
-      <a class="pv todo" href="#"><span>Paper</span><img class="paper" src="assets/paper-page1.png" alt="First page of the paper" width="78" height="101"></a>
-      <a class="pv code" href="https://github.com/chenpanl/implicit-thinking-budgets"><span>Code</span><img class="card" src="assets/github-preview.png" alt="GitHub repository chenpanl/implicit-thinking-budgets" width="152" height="76"></a>
+      <a class="pv todo" href="#"><span>[Paper]</span><img class="paper" src="assets/paper-page1.png" alt="First page of the paper" width="78" height="101"></a>
+      <a class="pv code" href="https://github.com/chenpanl/implicit-thinking-budgets"><span>[Code]</span><img class="card" src="assets/github-preview.png" alt="GitHub repository chenpanl/implicit-thinking-budgets" width="152" height="76"></a>
     </nav>
   </header>
   <figure class="teaser" id="fig0">
@@ -423,10 +423,11 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 5 -->
   <section id="s5" data-sec>
     <h2><span class="num">5</span><span class="t">Discussion &amp; Implications</span></h2>
-    <p>We have shown that the misallocation of the implicit thinking budget can act two ways, like a <mark class="mk-y">double-edged sword</mark>. On the one hand, it causes <mark class="mk-r">degradation under composition</mark> and <mark class="mk-r">reasoning overspending</mark> in isolation. On the other hand, this misallocation can be manipulated to <mark class="mk-b">save tokens without impacting accuracy</mark>. Since LLMs are already heavily used in production, what do our results imply?</p>
+    <p class="key">We have shown that the misallocation of the implicit thinking budget can act two ways, like a <mark class="mk-y">double-edged sword</mark>. On the one hand, it causes <mark class="mk-r">degradation under composition</mark> and <mark class="mk-r">reasoning overspending</mark> in isolation. On the other hand, this misallocation can be manipulated to <mark class="mk-b">save tokens without impacting accuracy</mark>. Since LLMs are already heavily used in production, what do our results imply?</p>
     <p><b>Long-running agents in production.</b> Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as <a href="https://trychroma.com/research/context-rot">context rot</a>. Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
     <p><b>Post-training as a potential mitigation.</b> Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.</p>
   </section>
+  <div class="rule" aria-hidden="true"></div>
 
   <!-- citation -->
   <section id="cite">
