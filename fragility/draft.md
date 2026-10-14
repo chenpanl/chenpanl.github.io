@@ -149,10 +149,6 @@ Also, due to limited training data availability, the linear probe currently does
 }
 ```
 
-\* Correspondence: chenpan.li@tum.de
-
-◇ Equal advisory role.
-
-This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmoeller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.
+\* Correspondence: chenpan.li@tum.de   ◇ Equal advisory role.
 
 <small>Page design inspired by [Base Models Can Reason By Taking a Cue From Training Data](https://www.sophielwang.com/cues) and [The Platonic Representation Hypothesis](https://phillipi.github.io/prh/).</small>
