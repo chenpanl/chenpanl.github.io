@@ -37,26 +37,26 @@ h1 { font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: -0.00
 .authors .au { color: var(--accent); white-space: nowrap; }
 .logos { display: flex; align-items: center; gap: 26px; margin: 0 0 18px; }
 .logos img { display: block; height: 22px; width: auto; }
-.hero-links { display: flex; gap: 32px; align-items: flex-start; padding-top: 22px; border-top: 1px dotted var(--fg); }
+.hero-links { display: flex; gap: 20px; align-items: flex-start; padding-top: 14px; border-top: 1px dotted var(--fg); }
 .pv.code { margin-top: 0; }
-.pv { display: flex; flex-direction: column; align-items: center; gap: 10px; font-size: 19px; color: var(--accent); }
+.pv { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 15px; color: var(--accent); }
 .pv:hover { text-decoration: none; }
 .pv:hover span { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
 .pv img { display: block; transition: transform .18s ease-out; }
 .pv:hover img { transform: translateY(-2px); }
-.pv .paper { width: 78px; height: auto; border: 1px solid #B9B9B9;
-  box-shadow: 4px 4px 0 -1px #FFFFFF, 4px 4px 0 0 #B9B9B9, 8px 8px 0 -1px #FFFFFF, 8px 8px 0 0 #B9B9B9; }
-.pv .card { width: 172px; height: auto; border: 1px solid #1A1A1A; }
-@media (min-width: 1360px) {
-  .hero { position: relative; }
-  .hero-links { position: absolute; top: 0; left: 100%; flex-direction: column; align-items: center; gap: 26px; border-top: 0; padding-top: 6px; padding-bottom: 4px; border-left: 1px dotted var(--fg); margin-left: 34px; padding-left: 34px; }
+.pv .paper { width: 39px; height: auto; border: 1px solid #B9B9B9;
+  box-shadow: 2px 2px 0 -1px #FFFFFF, 2px 2px 0 0 #B9B9B9, 4px 4px 0 -1px #FFFFFF, 4px 4px 0 0 #B9B9B9; }
+.pv .card { width: 80px; height: auto; border: 1px solid #1A1A1A; }
+/* from tablet width on, Paper and Code stack in one column inside the page, right of the title and authors */
+@media (min-width: 760px) {
+  .hero { grid-template-columns: minmax(0, 1fr) auto; gap: 0; }
+  .hero-links { flex-direction: column; align-items: center; gap: 14px; border-top: 0; padding-top: 4px; border-left: 1px dotted var(--fg); margin-left: 24px; padding-left: 24px; align-self: stretch; }
 }
-@media (min-width: 1440px) { .hero-links { margin-left: 64px; padding-left: 44px; } .pv .card { width: 188px; } }
 .tldr { margin: 30px 0 0; font-size: 19px; line-height: 1.75; text-wrap: pretty; }
 .tldr .tl { font-weight: 600; }
 .mk-y, .mk-b, .mk-r { color: inherit; padding: 1px 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .mk-y { background: var(--wash-yellow); } .mk-b { background: var(--wash-blue); } .mk-r { background: var(--wash-red); }
-.teaser { margin: 22px 0 0; }
+.teaser { margin: 22px auto 0; }
 .teaser img { display: block; width: 100%; height: auto; }
 .rule { height: 1px; background: var(--faint); margin: calc(var(--lh) * 2.2) 0 0; }
 .rule + section { margin-top: calc(var(--lh) * 2.2); }
@@ -72,7 +72,7 @@ section { margin-top: calc(var(--lh) * 3.6); scroll-margin-top: 32px; }
 /* text devices */
 .key { margin-block: var(--lh); padding-left: 20px; border-left: 3px solid color-mix(in srgb, var(--accent) 45%, #FFFFFF); }
 .key .km { color: inherit; background: none; }
-.hypo { margin: var(--lh) 0; padding: 16px 24px; border: 1px solid var(--box); border-radius: 6px;
+.hypo { margin: var(--lh) 0; padding: 16px 12px; border: 1px solid var(--box); border-radius: 6px;
   background: var(--wash); text-align: center; font: 600 15px/1.7 var(--mono); text-wrap: balance; }
 .hi, .lo { font-weight: 650; cursor: default; }
 .hi { color: var(--red); }
@@ -250,7 +250,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   .frame { padding: 14px 12px 32px; }
   .term { font-size: 12px; }
   .hero-links { gap: 24px; }
-  .pv .card { width: 136px; }
+  .pv .card { width: 68px; }
 }
 @media (prefers-reduced-motion: reduce) {
   [data-g], .rail i, .rail span, .pv img { transition: none; }
@@ -273,7 +273,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <header class="hero">
     <div class="hero-main">
       <h1>On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models</h1>
-      <p class="authors"><span class="au">Chenpan Li</span><sup>*</sup>, <span class="au">Thies Brockmöller</span>, <span class="au">Stefanie Jegelka</span>, <span class="au">Sharut Gupta</span><sup>◇</sup>, <span class="au">Nikolaos Karalias</span><sup>◇</sup></p>
+      <p class="authors"><span class="au">Chenpan Li</span><sup>*</sup>, <span class="au">Thies Brockmoeller</span>,<br><span class="au">Stefanie Jegelka</span>, <span class="au">Sharut Gupta</span><sup>◇</sup>, <span class="au">Nikolaos Karalias</span><sup>◇</sup></p>
       <div class="logos">
         <img src="assets/tum.svg" alt="Technical University of Munich" width="42" height="22">
         <img src="assets/mit.svg" alt="MIT" width="42" height="22">
@@ -317,7 +317,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
 
     <p class="q"><b>If a model can solve every constituent task alone, why does it fail a composition of them, and what mechanism drives it?</b></p>
     <p>In recent years, LLMs have gained immense abilities through stepwise thinking, which heavily influences task success. Hence, a composition of tasks might alter how a model thinks about each problem in detail, leading to degraded abilities. We argue that this is the case and propose the following hypothesis:</p>
-    <p class="hypo">Compositional degradation arises from a misallocation of the implicit thinking budget, where, under composition, LLMs <mark class="mk-y">systematically reduce thinking</mark>, thereby especially underallocating reasoning in high-effort tasks which require more, <mark class="mk-r">causing degradation in those</mark>.</p>
+    <p class="hypo">Compositional degradation arises from a misallocation of the implicit thinking budget, where, under composition, LLMs <mark class="mk-y">systematically reduce thinking</mark>, thereby especially underallocating reasoning in high-effort tasks, <mark class="mk-r">causing degradation in those</mark>.</p>
   </section>
 
   <!-- 2 -->
@@ -376,7 +376,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <section id="s4" data-sec>
     <h2><span class="num">4</span><span class="t">Exploiting implicit budgeting for efficient inference</span></h2>
     <p class="key"><mark class="km"><b>Fragility-aware batching.</b> The composition size k controls how much thinking is spent on each task. We propose a strategy that assigns <span class="lo" data-focus="low">non-fragile</span> tasks large compositions to save tokens, and keeps <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</mark></p>
-    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy mostly preserved. Random batching saves more tokens, but it often comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing less than random batching. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
+    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy mostly preserved. Random batching saves more tokens, but it often comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b>24% fewer tokens</b> on GPQA-Diamond while losing less than random batching. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b>31%</b> of tokens while losing at most 0.5 pp.</p>
 
     <figure id="fig4">
       <div class="frame" aria-label="Six tasks, two of them twice as wide because they think longer. Random batching into two prompts of three reduces every task to 55 percent and the two wide tasks fail: tokens minus 45 percent, 4 of 6 correct. Fragility-aware batching puts the four narrow tasks together and the two wide ones together; narrow tasks shrink to 47 percent, wide ones to 69 percent, and all six are solved: tokens minus 42 percent, 6 of 6 correct.">
@@ -410,8 +410,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 5 -->
   <section id="s5" data-sec>
     <h2><span class="num">5</span><span class="t">Discussion &amp; Implications</span></h2>
-    <p>We have shown that the misallocation of the implicit thinking budget can act two ways, like a double-edged sword. On the one hand, it causes degradation under composition and reasoning overspending in isolation. On the other hand, this misallocation can be manipulated to save tokens without impacting accuracy. Since LLMs are already heavily used in production, what do our results imply?</p>
-    <p><b>Long-running agents in production.</b> Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as context rot (<a href="https://trychroma.com/research/context-rot">Hong et al., 2025</a>). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
+    <p>We have shown that the misallocation of the implicit thinking budget can act two ways, like a <mark class="mk-y">double-edged sword</mark>. On the one hand, it causes <mark class="mk-r">degradation under composition</mark> and <mark class="mk-r">reasoning overspending</mark> in isolation. On the other hand, this misallocation can be manipulated to <mark class="mk-b">save tokens without impacting accuracy</mark>. Since LLMs are already heavily used in production, what do our results imply?</p>
+    <p><b>Long-running agents in production.</b> Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as <a href="https://trychroma.com/research/context-rot">context rot</a>. Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
     <p><b>Post-training as a potential mitigation.</b> Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.</p>
   </section>
 
@@ -420,13 +420,13 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
     <h2 class="plain"><span class="t">Citation</span></h2>
 <pre class="bib" id="bib"><button class="copy" type="button" id="copy">Copy</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
   <span class="sy-b">title</span> = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
-  <span class="sy-b">author</span> = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
+  <span class="sy-b">author</span> = {Li, Chenpan and Brockmoeller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
   <span class="sy-b">year</span> = {2026},
 }</code></pre>
     <div class="foot">
       <p>* Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
       <p>◇ Equal advisory role.</p>
-      <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
+      <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmoeller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
       <p class="credit">Page design inspired by <a href="https://www.sophielwang.com/cues">Base Models Can Reason By Taking a Cue From Training Data</a> and <a href="https://phillipi.github.io/prh/">The Platonic Representation Hypothesis</a>.</p>
     </div>
   </section>

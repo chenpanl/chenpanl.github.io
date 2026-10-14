@@ -7,7 +7,7 @@ Conventions
   [text]{.red}      red keyword, links to the red marks in the figures (fragile, high-effort)
   [text]{.blue}     blue keyword, same for the blue marks (non-fragile)
   [text]{.tok}      yellow token chip
-  [text]{.mk-y} / {.mk-r} / {.mk-b}   highlighter in washed yellow / red / blue (TL;DR, hypothesis)
+  [text]{.mk-y} / {.mk-r} / {.mk-b}   highlighter in washed yellow / red / blue (TL;DR, hypothesis, discussion)
   > [!KEY] ...      key message: light-turquoise vertical line on the left, text indented, no box or fill
   > [!HYPOTHESIS] ... boxed, bold, centred statement in monospace, grey
   > ...             question quote (italic, grey bar)
@@ -19,7 +19,8 @@ Conventions
 
 # On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models
 
-Chenpan Li\*, Thies Brockmöller, Stefanie Jegelka, Sharut Gupta◇, Nikolaos Karalias◇
+Chenpan Li\*, Thies Brockmoeller,
+Stefanie Jegelka, Sharut Gupta◇, Nikolaos Karalias◇
 
 [TUM logo] [MIT logo] · Paper (first-page preview) · Code (GitHub preview, github.com/chenpanl/implicit-thinking-budgets)
 
@@ -56,7 +57,7 @@ term 1 ✓   term 2 ✓   term 3 ✗
 
 In recent years, LLMs have gained immense abilities through stepwise thinking, which heavily influences task success. Hence, a composition of tasks might alter how a model thinks about each problem in detail, leading to degraded abilities. We argue that this is the case and propose the following hypothesis:
 
-> [!HYPOTHESIS] Compositional degradation arises from a misallocation of the implicit thinking budget, where, under composition, LLMs [systematically reduce thinking]{.mk-y}, thereby especially underallocating reasoning in high-effort tasks which require more, [causing degradation in those]{.mk-r}.
+> [!HYPOTHESIS] Compositional degradation arises from a misallocation of the implicit thinking budget, where, under composition, LLMs [systematically reduce thinking]{.mk-y}, thereby especially underallocating reasoning in high-effort tasks, [causing degradation in those]{.mk-r}.
 
 ## 2 How does thinking change under composition?
 
@@ -101,7 +102,7 @@ comment: # [high-effort]{.red} tasks fail earlier under composition
 
 > [!KEY] **Fragility-aware batching.** The composition size k controls how much thinking is spent on each task. We propose a strategy that assigns [non-fragile]{.blue} tasks large compositions to save tokens, and keeps [fragile]{.red} tasks in small ones to avoid degradation.
 
-The result is [**43% fewer tokens**]{.tok} on average across datasets, with accuracy mostly preserved. Random batching saves more tokens, but it often comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: [**24% fewer tokens**]{.tok} on GPQA-Diamond while losing less than random batching. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves [**31%**]{.tok} of tokens while losing at most 0.5 pp.
+The result is [**43% fewer tokens**]{.tok} on average across datasets, with accuracy mostly preserved. Random batching saves more tokens, but it often comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: **24% fewer tokens** on GPQA-Diamond while losing less than random batching. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves **31%** of tokens while losing at most 0.5 pp.
 
 [[Figure 4: batching animation, tasks T1–T6, T2 and T6 fragile]]
 toggle: random batching · fragility-aware
@@ -129,9 +130,9 @@ Also, due to limited training data availability, the linear probe currently does
 
 ## 5 Discussion & Implications
 
-We have shown that the misallocation of the implicit thinking budget can act two ways, like a double-edged sword. On the one hand, it causes degradation under composition and reasoning overspending in isolation. On the other hand, this misallocation can be manipulated to save tokens without impacting accuracy. Since LLMs are already heavily used in production, what do our results imply?
+We have shown that the misallocation of the implicit thinking budget can act two ways, like a [double-edged sword]{.mk-y}. On the one hand, it causes [degradation under composition]{.mk-r} and [reasoning overspending]{.mk-r} in isolation. On the other hand, this misallocation can be manipulated to [save tokens without impacting accuracy]{.mk-b}. Since LLMs are already heavily used in production, what do our results imply?
 
-**Long-running agents in production.** Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as context rot ([Hong et al., 2025](https://trychroma.com/research/context-rot)). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.
+**Long-running agents in production.** Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as [context rot](https://trychroma.com/research/context-rot). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.
 
 **Post-training as a potential mitigation.** Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.
 
@@ -141,7 +142,7 @@ We have shown that the misallocation of the implicit thinking budget can act two
 ```bibtex
 @inproceedings{li2026implicitthinkingbudgets,
   title = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
-  author = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
+  author = {Li, Chenpan and Brockmoeller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
   year = {2026},
 }
 ```
@@ -150,6 +151,6 @@ We have shown that the misallocation of the implicit thinking budget can act two
 
 ◇ Equal advisory role.
 
-This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.
+This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmoeller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.
 
 <small>Page design inspired by [Base Models Can Reason By Taking a Cue From Training Data](https://www.sophielwang.com/cues) and [The Platonic Representation Hypothesis](https://phillipi.github.io/prh/).</small>
