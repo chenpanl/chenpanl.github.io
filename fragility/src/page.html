@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,300..700;1,8..60,300..700&family=JetBrains+Mono:wght@400;700&display=swap">
 <style>
-/* An academic page in one serif: a wide title block with Paper and Code beside it, one 680px reading column, the section rail on the left. */
+/* An academic page in one serif: a wide title block with Paper and Code beside it, one 800px reading column with 680px figures, the section rail on the left. */
 :root {
   color-scheme: light;
   --bg: #FFFFFF; --fg: #1A1A1A; --muted: #6B6B6B; --faint: #E3E3E3; --wash: #F5F5F5; --box: #D6D6D6;
@@ -18,7 +18,7 @@
 
 body { background: #FFFFFF; color: var(--fg); font: 17px/1.65 var(--serif); font-optical-sizing: auto; -webkit-font-smoothing: antialiased; --lh: 27px; }
 ::selection { background: var(--yellow); color: #1A1A1A; }
-.col { position: relative; max-width: 680px; margin: 0 auto; padding-inline: 16px; padding-block: 72px 88px; box-sizing: content-box; }
+.col { position: relative; max-width: 800px; margin: 0 auto; padding-inline: 16px; padding-block: 72px 88px; box-sizing: content-box; }
 p { margin: 0 0 calc(var(--lh) * 0.6); }
 b, strong { font-weight: 650; }
 a { color: var(--accent); text-decoration: none; }
@@ -46,11 +46,12 @@ h1 { font-size: 28px; line-height: 1.25; font-weight: 500; letter-spacing: -0.00
 .pv:hover img { transform: translateY(-2px); }
 .pv .paper { width: 78px; height: auto; border: 1px solid #B9B9B9;
   box-shadow: 4px 4px 0 -1px #FFFFFF, 4px 4px 0 0 #B9B9B9, 8px 8px 0 -1px #FFFFFF, 8px 8px 0 0 #B9B9B9; }
-.pv .card { width: 152px; height: auto; border: 1px solid #1A1A1A; }
-@media (min-width: 1280px) {
+.pv .card { width: 172px; height: auto; border: 1px solid #1A1A1A; }
+@media (min-width: 1360px) {
   .hero { position: relative; }
   .hero-links { position: absolute; top: 0; left: 100%; flex-direction: column; align-items: center; gap: 26px; border-top: 0; padding-top: 6px; padding-bottom: 4px; border-left: 1px dotted var(--fg); margin-left: 34px; padding-left: 34px; }
 }
+@media (min-width: 1440px) { .hero-links { margin-left: 64px; padding-left: 44px; } .pv .card { width: 188px; } }
 .tldr { margin: 30px 0 0; font-size: 19px; line-height: 1.75; text-wrap: pretty; }
 .tldr .tl { font-weight: 600; }
 .mk-y, .mk-b, .mk-r { color: inherit; padding: 1px 0.15em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
@@ -64,11 +65,15 @@ h2 { display: grid; grid-template-columns: 2.3em minmax(0, 1fr); font-size: 23px
 h2 .num { color: var(--muted); font-weight: 400; white-space: nowrap; }
 h2 .num::before { content: "#"; color: var(--accent); margin-right: 0.3em; }
 h2 .t::first-letter { text-transform: uppercase; }
+h2.plain { display: block; }
+.q { margin-top: 30px; }
 section { margin-top: calc(var(--lh) * 3.6); scroll-margin-top: 32px; }
 
 /* text devices */
-blockquote { margin: 28px 0; padding: 2px 0 2px 22px; border-left: 3px solid var(--faint); font-size: 19px; line-height: 1.5; font-style: italic; }
-.key { margin-block: var(--lh); padding: 14px 18px; border-radius: 6px; background: color-mix(in srgb, var(--accent) 8%, #FFFFFF); }
+.key { margin-block: var(--lh); padding-left: 20px; border-left: 3px solid color-mix(in srgb, var(--accent) 45%, #FFFFFF); }
+.key .km { color: inherit; background: none; }
+.hypo { margin: var(--lh) 0; padding: 16px 24px; border: 1px solid var(--box); border-radius: 6px;
+  background: var(--wash); text-align: center; font: 600 15px/1.7 var(--mono); text-wrap: balance; }
 .hi, .lo { font-weight: 650; cursor: default; }
 .hi { color: var(--red); }
 .lo { color: var(--blue); }
@@ -82,14 +87,16 @@ blockquote { margin: 28px 0; padding: 2px 0 2px 22px; border-left: 3px solid var
 .sn, .fn { transition: color .15s, background .15s; }
 .sn.lit { color: var(--fg); }
 .fn.lit { background: color-mix(in srgb, var(--yellow) 32%, transparent); }
-@media (min-width: 1200px) {
-  .sn { position: absolute; left: calc(100% + 40px); width: min(210px, calc(50vw - 426px)); margin: 0; opacity: .7; transition: opacity .15s, color .15s; }
+@media (min-width: 1280px) {
+  .sn { position: absolute; left: calc(100% + 40px); width: min(210px, calc(50vw - 490px)); margin: 0; opacity: .7; transition: opacity .15s, color .15s; }
   .sn.lit, .sn:hover { opacity: 1; }
 }
 
 /* section rail */
-.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 340px - 52px); height: min(400px, 64vh); flex-direction: column; gap: 8px; z-index: 2; }
-@media (min-width: 1200px) { .rail { display: flex; } }
+.rail { display: none; position: fixed; top: 50%; transform: translateY(-50%); left: calc(50% - 400px - clamp(52px, 50vw - 680px, 130px)); height: min(360px, 58vh); flex-direction: column; gap: 8px; z-index: 2;
+  opacity: 0; visibility: hidden; transition: opacity .45s ease-out, visibility 0s linear .45s; }
+.rail.live { opacity: 1; visibility: visible; transition: opacity .45s ease-out; }
+@media (min-width: 1320px) { .rail { display: flex; } }
 .rail a { flex: 1; position: relative; width: 22px; }
 .rail a:hover { text-decoration: none; }
 .rail i { position: absolute; top: 0; bottom: 0; left: 10px; width: 1px; background: var(--faint); transition: width .18s ease-out, left .18s ease-out, background .18s ease-out; }
@@ -101,7 +108,7 @@ blockquote { margin: 28px 0; padding: 2px 0 2px 22px; border-left: 3px solid var
 .rail a:hover span, .rail a.on span { color: var(--fg); }
 
 /* figures */
-figure { margin: var(--lh) 0 0; }
+figure { max-width: 680px; margin: var(--lh) auto 0; }
 .frame { position: relative; border: 1px solid var(--faint); border-radius: 6px; padding: 20px 20px 36px; }
 .replay { position: absolute; right: 10px; bottom: 7px; font: 13px var(--serif); color: var(--muted); background: none; border: 0; padding: 2px 4px; cursor: pointer; }
 .replay:hover { color: var(--fg); }
@@ -127,7 +134,8 @@ figcaption .fl { color: var(--fg); font-weight: 650; }
 .term .gap { height: 0.85em; }
 .term .ig { display: inline-block; position: relative; z-index: 1; }
 .term .t1, .term .t2, .term .t3 { border-radius: 3px; padding: 0 3px; }
-.term .t1 { background: var(--wash-blue); } .term .t2 { background: var(--wash-yellow); } .term .t3 { background: var(--wash-red); }
+/* matte tints that only tell the three integrals apart, kept clear of the paper's red, yellow and blue */
+.term .t1 { background: #DCE5D6; } .term .t2 { background: #E4DEEE; } .term .t3 { background: #F1E0D2; }
 .ok { color: var(--blue); font-weight: 700; }
 .bad { color: var(--red); font-weight: 700; }
 .term .cm, .term .cm0 { color: var(--muted); }
@@ -204,6 +212,8 @@ details > .inner { margin-top: 12px; }
     linear-gradient(to right, rgba(0, 0, 0, .12), transparent) left / 12px 100% no-repeat scroll,
     linear-gradient(to left, rgba(0, 0, 0, .12), transparent) right / 12px 100% no-repeat scroll; }
 .scrollhint { font-size: 13px; color: var(--muted); margin: 8px 0 0; }
+/* wide enough screens show the whole table, centred over the column */
+@media (min-width: 900px) { .tablebox { width: 820px; margin-left: calc(50% - 410px); } .scrollhint { display: none; } }
 table { border-collapse: collapse; font-size: 13.5px; line-height: 1.5; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; width: 100%; }
 th, td { padding: 4px 10px; text-align: left; }
 thead th { font-weight: 400; color: var(--muted); border-bottom: 1px solid var(--faint); }
@@ -253,18 +263,17 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
 <!--BODY-->
 <nav class="rail" aria-label="Sections">
   <a href="#s1" data-s="s1"><i></i><span><b>1</b>What is compositional degradation?</span></a>
-  <a href="#s2" data-s="s2"><i></i><span><b>2</b>What does implicit budgeting look like?</span></a>
+  <a href="#s2" data-s="s2"><i></i><span><b>2</b>How does thinking change under composition?</span></a>
   <a href="#s3" data-s="s3"><i></i><span><b>3</b>What tasks fail under composition?</span></a>
   <a href="#s4" data-s="s4"><i></i><span><b>4</b>Exploiting implicit budgeting for efficient inference</span></a>
   <a href="#s5" data-s="s5"><i></i><span><b>5</b>Discussion &amp; Implications</span></a>
-  <a href="#cite" data-s="cite"><i></i><span><b>6</b>How to cite this work?</span></a>
 </nav>
 
 <main class="col" id="top">
   <header class="hero">
     <div class="hero-main">
       <h1>On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models</h1>
-      <p class="authors"><span class="au">Chenpan Li</span><sup>*</sup>, <span class="au">Thies Brockmöller</span>,<br><span class="au">Stefanie Jegelka</span>, <span class="au">Sharut Gupta</span><sup>◇</sup>, <span class="au">Nikolaos Karalias</span><sup>◇</sup></p>
+      <p class="authors"><span class="au">Chenpan Li</span><sup>*</sup>, <span class="au">Thies Brockmöller</span>, <span class="au">Stefanie Jegelka</span>, <span class="au">Sharut Gupta</span><sup>◇</sup>, <span class="au">Nikolaos Karalias</span><sup>◇</sup></p>
       <div class="logos">
         <img src="assets/tum.svg" alt="Technical University of Munich" width="42" height="22">
         <img src="assets/mit.svg" alt="MIT" width="42" height="22">
@@ -284,12 +293,12 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 1 -->
   <section id="s1" data-sec>
     <h2><span class="num">1</span><span class="t">What is compositional degradation?</span></h2>
-    <p>A <em>composition</em> is built from several independent constituent tasks, which are pasted into one prompt and answered in order. We keep only tasks a model solves in 3 out of 3 isolated attempts, then compose them. Even for these reliably solved tasks, an accuracy drop shows up for all tested models across math and language datasets.<span class="fn" data-fn="1">1</span><span class="fn">,</span><span class="fn" data-fn="2">2</span></p>
-    <aside class="sn" data-for="1"><sup>1</sup>It is not error accumulation. If composition had no effect, we would expect the accuracy drop to be close to 0.</aside>
-    <aside class="sn" data-for="2"><sup>2</sup>Nor is it context length. Most responses use under 25% of the context window, and in most datasets fewer than 1% hit the limit.</aside>
+    <p>Modern language models are increasingly asked to handle several tasks at once, such as answering a set of math problems or following a list of instructions before answering. However, common benchmarks still test one task at a time, which might overstate how robust these underlying abilities are. We ask <em>whether a model that reliably solves a task on its own can still solve it when other tasks share the prompt.</em></p>
+    <p>A <em>composition</em> is built from several independent constituent tasks, which are composed into one prompt and answered in order. First, we filter tasks a model solves in 3 out of 3 isolated attempts, then build composed prompts of these constituent tasks. Strikingly, even for these reliably solved tasks, compositional degradation shows up for all tested models across math and language datasets.<span class="fn" data-fn="1">1</span></p>
+    <aside class="sn" data-for="1"><sup>1</sup>We deliberately note that the accuracy degradation is not caused by independent error accumulation or context length issues. Most generations stay below 25% of the total context window. Further details are in the paper.</aside>
 
     <figure id="fig1">
-      <div class="frame" aria-label="Animated terminal. Three integrals, 3x squared, 2 sin(4x+1) and x e to the 2x, are each solved in 3 of 3 attempts alone. Merged into one integral of their sum, terms 1 and 2 are solved and term 3 fails.">
+      <div class="frame" aria-label="Animated terminal. Three integrals, 3x squared, 2 sin(4x+1) and x e to the 2x, are each solved in 3 of 3 attempts in isolation. Merged into one integral of their sum, terms 1 and 2 are solved and term 3 fails.">
         <div class="term" id="term">
           <div class="ln cm0"># filtering tasks solved 3 out of 3 times in isolation</div>
           <div class="ln" data-l="0"><span class="pr">$</span> solve "∫ <span class="t1">3x²</span> dx"             <span class="res"><i>✓</i> <i>✓</i> <i>✓</i></span></div>
@@ -299,64 +308,65 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
           <div class="ln merged"><span class="pr">$</span> solve "∫ <span class="ig t1">3x²</span><span class="pl"> + </span><span class="ig t2">2·sin(4x+1)</span><span class="pl"> + </span><span class="ig t3">x·e^(2x)</span> dx"</div>
           <div class="ln think m">thinking <span class="dots">···</span></div>
           <div class="ln out"><span class="o"><span class="t1">term 1</span> <span class="ok">✓</span></span>   <span class="o"><span class="t2">term 2</span> <span class="ok">✓</span></span>   <span class="o"><span class="t3">term 3</span> <span class="bad">✗</span></span></div>
-          <div class="ln cm"># each term: 3/3 separately. in composition: 2/3.
-<span class="bad" style="font-weight:400"># why is that?</span></div>
+          <div class="ln cm"># each term: 3/3 separately. in composition: 2/3.</div>
         </div>
         <button class="replay" type="button">↻ Replay</button>
       </div>
-      <figcaption><span class="fl">Figure 1.</span> Each integral is solved in 3 of 3 attempts alone, but composing them (i.e. summing them) causes failures.</figcaption>
+      <figcaption><span class="fl">Figure 1.</span> Each integral is solved in 3 of 3 attempts in isolation, but composing them (i.e. summing them) causes failures.</figcaption>
     </figure>
 
-    <blockquote>If a model can solve every constituent task alone, why does it fail a composition of them, and what mechanism drives it?</blockquote>
+    <p class="q"><b>If a model can solve every constituent task alone, why does it fail a composition of them, and what mechanism drives it?</b></p>
+    <p>In recent years, LLMs have gained immense abilities through stepwise thinking, which heavily influences task success. Hence, a composition of tasks might alter how a model thinks about each problem in detail, leading to degraded abilities. We argue that this is the case and propose the following hypothesis:</p>
+    <p class="hypo">Compositional degradation arises from a misallocation of the implicit thinking budget, where, under composition, LLMs <mark class="mk-y">systematically reduce thinking</mark>, thereby especially underallocating reasoning in high-effort tasks which require more, <mark class="mk-r">causing degradation in those</mark>.</p>
   </section>
 
   <!-- 2 -->
   <section id="s2" data-sec>
-    <h2><span class="num">2</span><span class="t">What does implicit budgeting look like?</span></h2>
-    <p>To observe how thinking tokens are distributed, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.</p>
-    <p>Measured across many open-weight LLMs, the token ratio falls as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. In plain terms, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
+    <h2><span class="num">2</span><span class="t">How does thinking change under composition?</span></h2>
+    <p>To observe how thinking tokens are distributed under composition, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.</p>
+    <p>Measured across many open-weight LLMs, the token ratio reduces as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. For instance, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
+
+    <p class="key"><mark class="km">Under composition, LLMs reduce thinking tokens for each task, by applying roughly the same proportional reduction (with factor k<sup>m</sup>) to all of them.</mark><span class="fn" data-fn="2">2</span></p>
+    <aside class="sn" data-for="2"><sup>2</sup>The prompt does not instruct any explicit per-task thinking limit, therefore the observed effect is self-imposed.</aside>
 
     <figure id="fig2">
       <div class="frame" aria-label="Log-log chart of token ratio against tasks per composition. For every model and dataset the three length bins fall along straight lines through (1, 1), the power law r approximately k to the m.">
-        <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>dataset <select id="f2-dataset" data-flag="dataset"></select></label><label>model <select id="f2-model" data-flag="model"></select></label></div></div>
+        <div class="fighead"><div class="legend" aria-hidden="true"><span>thinking tokens used in isolation:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>dataset <select id="f2-dataset" data-flag="dataset"></select></label><label>model <select id="f2-model" data-flag="model"></select></label></div></div>
         <div class="plot" id="pplot"><svg role="img" aria-label="Token ratio by composition size"></svg><div class="tip" hidden></div></div>
         <div class="readout" id="preadout"></div>
         <button class="replay" type="button">↻ Replay</button>
       </div>
-      <figcaption><span class="fl">Figure 2.</span> Thinking per task relative to solving it alone. Lines bin tasks by the thinking tokens they use in isolation (red long, yellow medium, blue short). Line: fitted k<sup>m</sup>.</figcaption>
+      <figcaption><span class="fl">Figure 2.</span> Thinking per task relative to solving it in isolation against composition size (k). Lines bin tasks by the thinking tokens they use in isolation (red long, yellow medium, blue short). Line: fitted k<sup>m</sup>.</figcaption>
     </figure>
 
-    <p class="key">Under composition, LLMs reduce thinking tokens for each task, by applying roughly the same proportional reduction (with factor k<sup>m</sup>) to all of them.<span class="fn" data-fn="3">3</span></p>
-    <aside class="sn" data-for="3"><sup>3</sup>The model does this voluntarily. The prompt sets no per-task limit and the context window is far from full, so the model rations on its own.</aside>
   </section>
 
   <!-- 3 -->
   <section id="s3" data-sec>
     <h2><span class="num">3</span><span class="t">What tasks fail under composition?</span></h2>
-    <p>The same reduction causes highly uneven degradation. <span class="hi" data-focus="high">High-effort</span> tasks, the ones with long thinking traces alone, lose the most accuracy.<span class="fn" data-fn="4">4</span> We call these tasks <span class="hi" data-focus="high">fragile</span>, whereas tasks that are robust to this reduction we call <span class="lo" data-focus="low">non-fragile</span>, since they show almost no degradation.<span class="fn" data-fn="5">5</span><span class="fn">,</span><span class="fn" data-fn="6">6</span></p>
-    <aside class="sn" data-for="4"><sup>4</sup>An analogous effect arises when a solo task is forced to stop thinking at its composed budget.</aside>
-    <aside class="sn" data-for="5"><sup>5</sup>Q: Why is the degradation so uneven? A: Short traces carry slack, more thinking than the task needs. High-effort tasks are more vulnerable because they actually need that many thinking tokens to be solved.</aside>
-    <aside class="sn" data-for="6"><sup>6</sup>Fragility is a stable property of a task for a given model: the same tasks fail across composition sizes and orderings (correlation <b>0.81</b>), whereas different models break on different tasks (<b>0.24</b>).</aside>
-    <p class="key">Modern LLMs mostly solve difficult tasks in isolation without trouble. Given a composition, however, they fail to assign each task the thinking budget it needs, so the most difficult constituent tasks fail first.</p>
+    <p>This reduction in thinking causes highly uneven degradation of task solving abilities. <span class="hi" data-focus="high">Fragile</span> tasks, the ones with long thinking traces in isolation, lose the most accuracy, whereas tasks that are robust to this reduction we call <span class="lo" data-focus="low">non-fragile</span>, since they show almost no degradation.<span class="fn" data-fn="3">3</span><span class="fn">,</span><span class="fn" data-fn="4">4</span></p>
+    <aside class="sn" data-for="3"><sup>3</sup>An analogous effect arises when a task in isolation is forced to stop thinking at its composed budget.</aside>
+    <aside class="sn" data-for="4"><sup>4</sup>Fragility is a stable property of a task for a given model, since we observed that the same tasks tend to fail across composition sizes and orderings, whereas different models tend to break on different tasks.</aside>
+    <p class="key"><mark class="km">When solving tasks in isolation, LLMs typically allocate a sufficient thinking budget to each. Under composition, however, they systematically underallocate this budget, and tasks they reliably solve in isolation, fragile ones in particular, start failing.</mark></p>
 
     <figure id="fig3">
       <div class="frame" aria-label="Three bars show the thinking each integral gets alone, with a dashed tick for the thinking it needs. All bars shrink by the same factor. Terms 1 and 2 still clear their ticks; term 3 falls short and fails.">
-        <div class="plot bars" id="bplot"><svg role="img" aria-label="Same reduction, different slack"></svg></div>
+        <div class="plot bars" id="bplot"><svg role="img" aria-label="Same reduction, different reasoning overhead"></svg></div>
         <div class="comment" id="bcomment"># <span class="hi" data-focus="high" style="font-weight:400">high-effort</span> tasks fail earlier under composition</div>
         <button class="replay" type="button">↻ Replay</button>
       </div>
-      <figcaption><span class="fl">Figure 3.</span> Same reduction, different slack. Every trace shrinks by the same factor k<sup>m</sup>, and only term 3 drops below the thinking it needs.</figcaption>
+      <figcaption><span class="fl">Figure 3.</span> Same reduction, different reasoning overhead. Every trace shrinks by the same factor k<sup>m</sup>, and only term 3 drops below the thinking it needs.</figcaption>
     </figure>
 
     <details id="evidence">
-      <summary>the evidence: accuracy drop vs token reduction (paper fig. 5)</summary>
+      <summary>Empirical evidence: accuracy drop vs token reduction</summary>
       <div class="inner">
-        <figure style="margin:0">
+        <figure style="margin:0 auto">
           <div class="frame" style="padding-bottom:18px" aria-label="Accuracy change against token reduction per length bin. Long-thinking tasks lose the most accuracy as the reduction grows.">
-            <div class="fighead"><div class="legend" aria-hidden="true"><span>isolated thinking:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>dataset <select id="f5-dataset" data-flag="dataset"></select></label><label>model <select id="f5-model" data-flag="model"></select></label></div></div>
+            <div class="fighead"><div class="legend" aria-hidden="true"><span>thinking tokens used in isolation:</span><span><i class="sw-high"></i>long</span><span><i class="sw-medium"></i>medium</span><span><i class="sw-low"></i>short</span></div><div class="flags"><label>dataset <select id="f5-dataset" data-flag="dataset"></select></label><label>model <select id="f5-model" data-flag="model"></select></label></div></div>
             <div class="plot" id="eplot"><svg role="img" aria-label="Accuracy change against token reduction"></svg><div class="tip" hidden></div></div>
           </div>
-          <figcaption><span class="fl">Figure 3b.</span> Accuracy change of tasks solved 3 of 3 times alone, against the share of thinking that composition removed. Each point is one composition size k; bins as in Figure 2.</figcaption>
+          <figcaption><span class="fl">Figure 3b.</span> Accuracy change of tasks solved 3 of 3 times in isolation, against the share of thinking that composition removed. Each point is one composition size k; bins as in Figure 2.</figcaption>
         </figure>
       </div>
     </details>
@@ -365,8 +375,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 4 -->
   <section id="s4" data-sec>
     <h2><span class="num">4</span><span class="t">Exploiting implicit budgeting for efficient inference</span></h2>
-    <p class="key"><b>Fragility-aware batching.</b> The composition size k controls how much thinking each task gets. So put <span class="lo" data-focus="low">non-fragile</span> tasks into large batches to save tokens, and keep <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</p>
-    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy unchanged (+0.6 pp). Random batching saves more tokens in the end, but in most cases it comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing only 0.4 pp. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
+    <p class="key"><mark class="km"><b>Fragility-aware batching.</b> The composition size k controls how much thinking is spent on each task. We propose a strategy that assigns <span class="lo" data-focus="low">non-fragile</span> tasks large compositions to save tokens, and keeps <span class="hi" data-focus="high">fragile</span> tasks in small ones to avoid degradation.</mark></p>
+    <p>The result is <b class="tok">43% fewer tokens</b> on average across datasets, with accuracy mostly preserved. Random batching saves more tokens, but it often comes with a substantial accuracy loss. The method is black-box, needing no weights or internal states, so it also works on Claude Opus 5: <b class="tok">24% fewer tokens</b> on GPQA-Diamond while losing less than random batching. For unseen tasks, a linear probe on task embeddings predicts fragility and still saves <b class="tok">31%</b> of tokens while losing at most 0.5 pp.</p>
 
     <figure id="fig4">
       <div class="frame" aria-label="Six tasks, two of them twice as wide because they think longer. Random batching into two prompts of three reduces every task to 55 percent and the two wide tasks fail: tokens minus 45 percent, 4 of 6 correct. Fragility-aware batching puts the four narrow tasks together and the two wide ones together; narrow tasks shrink to 47 percent, wide ones to 69 percent, and all six are solved: tokens minus 42 percent, 6 of 6 correct.">
@@ -382,7 +392,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
     </figure>
 
     <details id="full">
-      <summary>full results: all models × datasets (paper Table 2)</summary>
+      <summary>Full results: all models and datasets</summary>
       <div class="inner">
         <div class="flags" style="justify-content:flex-start;margin:0">
           <label>dataset <select id="t-dataset"></select></label>
@@ -390,6 +400,8 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
         <p class="scrollhint" aria-hidden="true">scroll sideways for all four policies →</p>
         <div class="tablebox"><table id="rtable"></table></div>
         <p class="tnotes" id="tnotes"></p>
+        <p><b>Limitations.</b> Fragility-aware batching is most effective on datasets with a mix of fragile and non-fragile tasks. At either extreme, naive strategies work equally well. On the one hand, OneWordQA and StrategyQA require only little reasoning, so almost all tasks are non-fragile, thus random grouping works equally well. On the other hand, tasks from AIME cannot be composed since it always leads to a substantial accuracy degradation, thus isolated solving is best here.</p>
+        <p>Also, due to limited training data availability, the linear probe currently does not generalize across different datasets, limiting its use in production. However, an interesting path for future work would be to scale such fragility predictors with more diverse data.</p>
       </div>
     </details>
 
@@ -398,23 +410,24 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 5 -->
   <section id="s5" data-sec>
     <h2><span class="num">5</span><span class="t">Discussion &amp; Implications</span></h2>
-    <p><b>Previous context can cause degradation too.</b> We deliberately compose independent tasks of the same type, isolating the budget effect in its simplest form. Prior work finds that reasoning traces also shorten when the same task is embedded in irrelevant context, conversation history, or a larger task (<a href="https://arxiv.org/abs/2604.01161">Rodionov et al., 2026</a>), suggesting that implicit thinking budgeting may extend beyond same-type composition.</p>
-    <p><b>Long-running agents in production.</b> This is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as context rot (<a href="https://trychroma.com/research/context-rot">Hong et al., 2025</a>). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
+    <p>We have shown that the misallocation of the implicit thinking budget can act two ways, like a double-edged sword. On the one hand, it causes degradation under composition and reasoning overspending in isolation. On the other hand, this misallocation can be manipulated to save tokens without impacting accuracy. Since LLMs are already heavily used in production, what do our results imply?</p>
+    <p><b>Long-running agents in production.</b> Compositional degradation is particularly relevant to agentic workflows, where tool outputs, interaction histories, and intermediate results continually accumulate. Agents are widely observed to degrade as their context grows, a phenomenon known as context rot (<a href="https://trychroma.com/research/context-rot">Hong et al., 2025</a>). Our results point to a degradation that sets in long before the context fills up: a high-effort step can be unknowingly misbudgeted, possibly leading to error propagation in subsequent tasks. As a direct practical intervention, agents can keep their context lean and hand reasoning-intensive steps to subagents that start from a fresh context.</p>
     <p><b>Post-training as a potential mitigation.</b> Our results suggest that reasoning allocation contributes to the difficulty of composed tasks, even when the constituent tasks are solvable in isolation. Integrating budget management into RL pipelines through explicit training on composed tasks could help models allocate reasoning more effectively across a shared prompt.</p>
   </section>
 
-  <!-- 6 -->
+  <!-- citation -->
   <section id="cite">
-    <h2><span class="num">6</span><span class="t">How to cite this work?</span></h2>
+    <h2 class="plain"><span class="t">Citation</span></h2>
 <pre class="bib" id="bib"><button class="copy" type="button" id="copy">Copy</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
   <span class="sy-b">title</span> = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
   <span class="sy-b">author</span> = {Li, Chenpan and Brockm{\"o}ller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
   <span class="sy-b">year</span> = {2026},
 }</code></pre>
     <div class="foot">
-      <p>Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
+      <p>* Correspondence: <span style="color:var(--fg)">chenpan.li@tum.de</span></p>
+      <p>◇ Equal advisory role.</p>
       <p>This project was funded by NSF award CCF-2112665 (TILOS) and an Alexander von Humboldt professorship. Sharut Gupta was supported by a MathWorks Engineering Fellowship. Thies Brockmöller and Chenpan Li are supported by the scholarship of the Studienstiftung des deutschen Volkes, and Chenpan Li is also supported by the scholarship of the Thomas-Weiland Wissenschaftsstiftung.</p>
-      <p class="credit">Page design inspired by <a href="https://www.sophielwang.com/cues">Base Models Can Reason By Taking a Cue From Training Data</a>, <a href="https://unpaired-multimodal.github.io/">Unpaired Multimodal Learning</a> and <a href="https://phillipi.github.io/prh/">The Platonic Representation Hypothesis</a>.</p>
+      <p class="credit">Page design inspired by <a href="https://www.sophielwang.com/cues">Base Models Can Reason By Taking a Cue From Training Data</a> and <a href="https://phillipi.github.io/prh/">The Platonic Representation Hypothesis</a>.</p>
     </div>
   </section>
 </main>
@@ -650,7 +663,7 @@ function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
   new ResizeObserver(() => mo.redraw()).observe(box);
 })();
 
-/* ---------- fig 3: same reduction, different slack ---------- */
+/* ---------- fig 3: same reduction, different reasoning overhead ---------- */
 (function fig3() {
   const box = $("#bplot"), svg = $("svg", box), comment = $("#bcomment");
   const alone = [0.36, 0.56, 0.95], need = [0.13, 0.21, 0.84], F = 0.55;
@@ -674,7 +687,7 @@ function sup(v) { return `<tspan dy="-5" font-size="9">${v}</tspan>`; }
       o += `<text class="${end > nx ? "mk-ok" : "mk-bad"}" x="${W - 6}" y="${y + 14}" text-anchor="end" opacity="${c.toFixed(2)}">${end > nx ? "✓" : "✗"}</text>`;
       o += `</g>`;
     }
-    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--matte-blue)">■</tspan> slack<tspan dx="16" style="fill:var(--matte-red)">■</tspan> deficit</text>`;
+    o += `<text class="hint" x="${L}" y="${top + rowH * 3 + 8}">┆ needed<tspan dx="16" style="fill:var(--matte-blue)">■</tspan> reasoning overhead<tspan dx="16" style="fill:var(--matte-red)">■</tspan> deficit</text>`;
     svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.setAttribute("height", H);
     svg.innerHTML = o;
     comment.style.opacity = seg(t, 1800, 2200);
@@ -893,8 +906,9 @@ R1 Qwen3 8B|70.0|606|67.7|-2.3|89|-85.4|71.1|+1.1|425|-29.9|69.9|-0.1|629|+3.8`,
     const ac = v => `<td class="sep${parseFloat(v) <= -1 ? " neg" : ""}">${minus(v)}</td>`;
     h += `<tr class="avg"><td>Average</td><td>${a[0]}%</td><td>${a[1]}</td>${ac(a[2])}<td>${minus(a[3])}%</td>${ac(a[4])}<td>${minus(a[5])}%</td>${ac(a[6])}<td>${minus(a[7])}%</td></tr></tbody>`;
     tbl.innerHTML = h;
-    notes.innerHTML = "Accuracy and output tokens per task (thinking plus answer); changes against k = 1 in parentheses, in pp for accuracy and in % for tokens. Accuracy losses of 1 pp or more are red."
+    notes.innerHTML = "Accuracy and output tokens per task (thinking plus answer); changes against k = 1 in parentheses, in pp for accuracy and in % for tokens."
       + (sel.value === "onewordqa" ? " † R1 Qwen3 8B breaks the answer format under composition on OneWordQA, which causes parsing errors, so the Average leaves it out." : "")
+      + (sel.value === "integrals" ? " When testing on the Integrals dataset, fragility-aware batching with held-out predictions from the linear predictor outperforms the measured variant. This is because even comparably fragile integrals lose very little accuracy, so estimates from a limited number of observations are noisy. The trained predictor also has access to the structure of each integral, which makes it more robust to this measurement noise." : "")
       + (sel.value === "gpqa-diamond" ? " Claude Opus 5 is measured with fewer trials to limit cost." : "")
       + " AIME is missing because nearly every task degrades already at k = 3, so fragility-aware batching keeps almost every task alone.";
   }
@@ -912,7 +926,7 @@ document.querySelectorAll("[data-focus]").forEach(el => {
 });
 
 // margin notes sit level with their footnote mark on wide screens
-const wideQ = matchMedia("(min-width: 1200px)");
+const wideQ = matchMedia("(min-width: 1280px)");
 function placeNotes() {
   const col = $(".col"), cr = col.getBoundingClientRect();
   let floor = -Infinity;
@@ -939,12 +953,14 @@ document.querySelectorAll(".sn").forEach(n => {
 });
 
 // section rail
-const rail = [...document.querySelectorAll(".rail a")], secs = rail.map(a => document.getElementById(a.dataset.s));
+const railNav = $(".rail"), rail = [...document.querySelectorAll(".rail a")], secs = rail.map(a => document.getElementById(a.dataset.s));
 function onScroll() {
   const y = innerHeight * 0.4;
   let on = -1;
   secs.forEach((s, i) => { if (s.getBoundingClientRect().top < y) on = i; });
   rail.forEach((a, i) => a.classList.toggle("on", i === on));
+  // the index stays out of the way until the reader starts scrolling
+  railNav.classList.toggle("live", scrollY > 40);
 }
 addEventListener("scroll", () => requestAnimationFrame(onScroll), { passive: true });
 onScroll();
