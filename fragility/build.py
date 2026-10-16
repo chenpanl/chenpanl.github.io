@@ -30,7 +30,9 @@ head, body = page.split("<!--BODY-->")
 <meta property="og:title" content="On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models">
 <meta property="og:description" content="{DESCRIPTION}">
 <meta name="twitter:card" content="summary">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
 <link rel="icon" type="image/svg+xml" href="assets/broken_glass.svg">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 {head}</head>
 <body>
 {body}</body>
