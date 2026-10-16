@@ -13,6 +13,7 @@ Conventions
   > ...             question quote (italic, grey bar)
   [^n]              footnote mark; the note itself is shown in the margin
   k^m               rendered as k with superscript m
+  [text]{.toggle}  clickable phrase that opens the widget stubbed below it
   [[Figure: ...]]   an interactive figure; the text inside it is listed below the marker
   ::: details "summary"   collapsed block
 -->
@@ -22,7 +23,7 @@ Conventions
 Chenpan Li\*, Thies Brockmoeller,
 Stefanie Jegelka, Sharut Gupta◇, Nikolaos Karalias◇
 
-[TUM logo] [MIT logo] · [Paper] (first-page preview) · [Code] (GitHub preview, github.com/chenpanl/implicit-thinking-budgets)
+[TUM logo] [MIT logo] · [Paper] (first-page preview) · [Code] (GitHub preview, github.com/chenpanli/fragility)
 
 [[Main figure: paper Figure 1, no caption]]
 
@@ -61,7 +62,13 @@ In recent years, LLMs have gained immense abilities through stepwise thinking, w
 
 ## 2 How does thinking change under composition?
 
-To observe how thinking tokens are distributed under composition, every task in the prompt gets a tag (`Q01`, `Q02`, …). The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The *token ratio* r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.
+To observe how thinking tokens are distributed under composition, every task in [the prompt gets a tag (`Q01`, `Q02`, … *discover how it’s done*)]{.toggle}. The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The *token ratio* r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.
+
+[[Trace viewer: opens from the {.toggle} phrase above; dataset, model and k selectors; ten traces per k sharing one task in red]]
+columns: thinking trace · tokens
+below the trace: "thinking tokens per task" bar chart, marked task first, dashed line labelled "mean over the ten traces of the [marked task]{.red}"; hovering a red "marked task" highlights the marked task everywhere
+results line: "N of M tasks correct · X thinking tokens"
+note: Ten random compositions per k, one per seed, all sharing a [marked task]{.red}; all other tasks are random. A segment starts wherever the model names a tag. The grey task is the dummy, which is left out since its token estimation is unreliable.
 
 Measured across many open-weight LLMs, the token ratio reduces as a power law, r ≈ k^m, with median slope **m = −0.54** and median R² of **0.91**. For instance, with 4 tasks each keeps about half its thinking; with 10, about 29%.
 
@@ -142,7 +149,7 @@ Also, due to limited training data availability, the linear probe currently does
 ## Citation
 
 ```bibtex
-@inproceedings{li2026implicitthinkingbudgets,
+@inproceedings{li2026fragility,
   title = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
   author = {Li, Chenpan and Brockmoeller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
   year = {2026},

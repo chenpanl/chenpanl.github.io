@@ -140,6 +140,61 @@ figcaption .fl { color: var(--fg); font-weight: 650; }
 .bad { color: var(--red); font-weight: 700; }
 .term .cm, .term .cm0 { color: var(--muted); }
 
+/* trace viewer, opened from the tag sentence in section 2 */
+.tv-open { all: unset; cursor: pointer; border-bottom: 1px dotted var(--accent); }
+.tv-open::after { content: "\00a0▸"; color: var(--accent); font-size: .8em; }
+.tv-open[aria-expanded="true"]::after { content: "\00a0▾"; }
+.tv-open:hover { border-bottom-style: solid; }
+.tv-hint { font-size: .78em; font-style: italic; color: var(--accent); }
+.tv-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tv { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .45s ease; }
+.tv.open { grid-template-rows: 1fr; }
+.tv-in { overflow: hidden; min-height: 0; }
+.tv-box { position: relative; margin: 2px 0 var(--lh); border: 1px solid var(--faint); border-radius: 6px; padding: 14px 16px 14px; }
+.tv-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 18px; }
+.tv-note { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); flex: 1 1 300px; }
+.tv-mark { color: var(--red); font-weight: 600; cursor: default; }
+/* hovering "marked task" picks out the red task everywhere in the viewer */
+.tv-row, .tv-res .a, .tv-bar { transition: opacity .2s ease-out; }
+.tv-box.mark .tv-row:not(.anchor), .tv-box.mark .tv-res .a:not(.anchor), .tv-box.mark .tv-bar:not(.red) { opacity: .2; }
+.tv-head .flags { margin: 0; }
+.tv-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+.tv-pick span { margin-right: 4px; }
+.tv-pick button { font: 12px/1.6 var(--mono); min-width: 26px; padding: 0 2px; border: 1px solid var(--faint); border-radius: 4px; background: #FFFFFF; color: var(--muted); cursor: pointer; }
+.tv-pick button:hover { border-color: var(--muted); }
+.tv-pick button.on { border-color: var(--fg); color: var(--fg); }
+.tv-cols, .tv-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 14px; }
+.tv-cols { margin: 12px 0 4px; font-size: 12px; color: var(--muted); }
+.tv-cols span:last-child { text-align: right; }
+.tv-body { position: relative; max-height: 470px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; transition: opacity .18s ease-out; }
+.tv-body.fade { opacity: 0; }
+.tv-row { margin-bottom: 3px; }
+.tv-seg { font: 12px/1.55 var(--mono); padding: 3px 8px; border-left: 3px solid var(--c); border-radius: 0 3px 3px 0; background: var(--b); overflow-wrap: anywhere; }
+.tv-seg b { font-weight: 600; margin-right: 7px; }
+.tv-tok { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding-top: 5px; font: 12px var(--mono); color: var(--muted); }
+.tv-tok i { flex: 0 1 auto; height: 6px; border-radius: 1px; background: var(--c); }
+.tv-tok span { flex: none; min-width: 4.2em; text-align: right; }
+.tv-row.anchor .tv-tok span { color: var(--red); font-weight: 600; }
+.tv-res { margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--faint); font: 12px/2 var(--mono); }
+.tv-res > span:first-child { color: var(--muted); margin-right: 8px; }
+.tv-res .a { display: inline-block; margin-right: 6px; padding: 0 6px; line-height: 1.6; border-left: 3px solid var(--c); background: var(--b); white-space: nowrap; }
+.tv-res .sum { display: block; color: var(--muted); }
+.tv-empty { font-size: 13.5px; color: var(--muted); margin: 8px 0; }
+.tv-chart { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--faint); }
+.tv-chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 16px; margin-bottom: 4px; font-size: 12px; color: var(--muted); }
+.tv-chart-head i { display: inline-block; width: 16px; margin-right: 6px; vertical-align: middle; border-top: 2px dashed var(--fg); }
+.tv-bars { display: flex; align-items: flex-end; gap: 4px; }
+.tv-bar { flex: 1 1 0; min-width: 0; max-width: 40px; }
+.tv-bar .area { position: relative; height: 96px; }
+.tv-bar .bcol { position: absolute; left: 0; right: 0; bottom: 0; background: var(--c); opacity: .75; border-radius: 2px 2px 0 0; transition: height .45s ease, background-color .45s ease; }
+.tv-bar .v { position: absolute; left: -6px; right: -6px; text-align: center; font: 10.5px var(--mono); color: var(--muted); transition: bottom .45s ease; }
+.tv-bar .mean { position: absolute; left: -4px; right: -4px; border-top: 2px dashed var(--fg); transition: bottom .45s ease; }
+.tv-bar .q { margin-top: 3px; text-align: center; font: 10.5px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; }
+.tv-bar.red .q { color: var(--red); font-weight: 600; }
+.tv-ghost { position: absolute; z-index: 1; pointer-events: none; border: 2px solid var(--red); border-radius: 4px; opacity: 0; }
+@media (max-width: 560px) { .tv-cols, .tv-row { grid-template-columns: minmax(0, 1fr) 64px; gap: 8px; } .tv-tok i { display: none; } .tv-bar .v { display: none; } .tv-bars { gap: 2px; } }
+@media print { .tv { display: none; } }
+
 /* charts */
 .plot { position: relative; }
 .plot svg { display: block; overflow: visible; }
@@ -281,11 +336,11 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
     </div>
     <nav class="hero-links" aria-label="Paper and code">
       <a class="pv todo" href="#"><span>[Paper]</span><img class="paper" src="assets/paper-page1.png" alt="First page of the paper" width="78" height="101"></a>
-      <a class="pv code" href="https://github.com/chenpanl/implicit-thinking-budgets"><span>[Code]</span><img class="card" src="assets/github-preview.png" alt="GitHub repository chenpanl/implicit-thinking-budgets" width="152" height="76"></a>
+      <a class="pv code" href="https://github.com/chenpanli/fragility"><span>[Code]</span><img class="card" src="assets/github-preview.png" alt="GitHub repository chenpanli/fragility" width="152" height="76"></a>
     </nav>
   </header>
   <figure class="teaser" id="fig0">
-    <img src="assets/paper-figure1.png" alt="Three tasks solved alone each get more reasoning than they need. Composed into one prompt, every task's reasoning shrinks by the same factor; tasks 1 and 3 still clear their requirement, while task 2, which needs long reasoning, falls below it and fails." width="1500" height="692">
+    <img src="assets/paper-figure1.png" alt="Three tasks solved alone each get more reasoning than they need. Composed into one prompt, every task's reasoning shrinks by the same factor; tasks 1 and 3 still clear their requirement, while task 2, which needs long reasoning, falls below it and fails." width="1500" height="714">
   </figure>
   <p class="tldr"><span class="tl">TL;DR:</span> When prompts are composed of many tasks, language models systematically <mark class="mk-y">reduce their reasoning effort across tasks according to a power law</mark>, causing <mark class="mk-r">failures</mark> on those that require more effort. By adjusting task grouping based on <b>task fragility</b>, we can <mark class="mk-b">save 43% of tokens without degrading accuracy</mark>.</p>
   <div class="rule" aria-hidden="true"></div>
@@ -323,7 +378,25 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- 2 -->
   <section id="s2" data-sec>
     <h2><span class="num">2</span><span class="t">How does thinking change under composition?</span></h2>
-    <p>To observe how thinking tokens are distributed under composition, every task in the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, …). The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.</p>
+    <p>To observe how thinking tokens are distributed under composition, every task in <button type="button" class="tv-open" aria-expanded="false" aria-controls="tv">the prompt gets a tag (<code>Q01</code>, <code>Q02</code>, … <span class="tv-hint">discover how it’s done</span>)</button>. The model names the tag whenever it turns to a task, which allows for an exact attribution of thinking tokens. The <em>token ratio</em> r = T(k) / T(1) is a measurement of how much of the thinking tokens in isolation remains when the task is placed together in a composition of k tasks.</p>
+    <div class="tv" id="tv">
+      <div class="tv-in">
+        <div class="tv-box" role="region" aria-label="Reasoning traces cut at each tag">
+          <div class="tv-head">
+            <p class="tv-note">Ten random compositions per k, one per seed, all sharing a <span class="tv-mark">marked task</span>; all other tasks are random. A segment starts wherever the model names a tag. The grey task is the dummy, which is left out since its token estimation is unreliable.</p>
+            <div class="flags"><label>dataset <select id="tv-ds"></select></label><label>model <select id="tv-m"></select></label><label>k <select id="tv-k"></select></label></div>
+          </div>
+          <div class="tv-pick" id="tv-pick" role="group" aria-label="Trace"><span>trace</span></div>
+          <div class="tv-cols" aria-hidden="true"><span>thinking trace</span><span>tokens</span></div>
+          <div class="tv-body" id="tv-body"></div>
+          <div class="tv-chart" aria-label="Thinking tokens per task in this trace">
+            <div class="tv-chart-head"><span>thinking tokens per task</span><span><i></i>mean over the ten traces of the <span class="tv-mark">marked task</span>: <b id="tv-mean">–</b></span></div>
+            <div class="tv-bars" id="tv-bars"></div>
+          </div>
+          <div class="tv-ghost" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
     <p>Measured across many open-weight LLMs, the token ratio reduces as a power law, r ≈ k<sup>m</sup>, with median slope <b>m = −0.54</b> and median R² of <b>0.91</b>. For instance, with 4 tasks each keeps about half its thinking; with 10, about 29%.</p>
 
     <p class="key"><mark class="km">Under composition, LLMs reduce thinking tokens for each task, by applying roughly the same proportional reduction (with factor k<sup>m</sup>) to all of them.</mark><span class="fn" data-fn="2">2</span></p>
@@ -419,7 +492,7 @@ body[data-focus="low"] [data-g]:not([data-g="low"]) { opacity: 0.16 !important; 
   <!-- citation -->
   <section id="cite">
     <h2 class="plain"><span class="t">Citation</span></h2>
-<pre class="bib" id="bib"><button class="copy" type="button" id="copy">Copy</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026implicitthinkingbudgets</span>,
+<pre class="bib" id="bib"><button class="copy" type="button" id="copy">Copy</button><code style="background:none;padding:0">@<span class="sy-r">inproceedings</span>{<span class="sy-y">li2026fragility</span>,
   <span class="sy-b">title</span> = {On the Fragility of Tasks under Composition: Implicit Budgeting in Language Models},
   <span class="sy-b">author</span> = {Li, Chenpan and Brockmoeller, Thies and Jegelka, Stefanie and Gupta, Sharut and Karalias, Nikolaos},
   <span class="sy-b">year</span> = {2026},
@@ -950,6 +1023,156 @@ document.querySelectorAll(".sn").forEach(n => {
   const on = v => () => { n.classList.toggle("lit", v); ref.classList.toggle("lit", v); };
   [n, ref].forEach(el => { el.addEventListener("mouseenter", on(true)); el.addEventListener("mouseleave", on(false)); });
 });
+
+/* ---------- trace viewer: one task followed through every prompt ---------- */
+(function traceViewer() {
+  const open = $(".tv-open"), wrap = $("#tv"), frame = $(".tv-box"), body = $("#tv-body"), pick = $("#tv-pick"), ghost = $(".tv-ghost");
+  const selD = $("#tv-ds"), selM = $("#tv-m"), selK = $("#tv-k"), bars = $("#tv-bars"), meanOut = $("#tv-mean");
+  const RED = ["#C8413F", "#F5DCDA"], GREY = ["#B4B4B4", "#F2F2F2"];
+  // twenty matte hues for the other tasks, kept clear of the red
+  const PAL = ["#7A9E7E", "#8E7CC3", "#C9A66B", "#6F9FB5", "#A3B86C", "#B48EAD", "#D4A373", "#5E8C8A", "#8FA3BF", "#C2B280",
+    "#7FA7A3", "#A68A64", "#9C89B8", "#B5C99A", "#D6B58A", "#6B8F71", "#87A8C3", "#B89F7D", "#94B49F", "#A99BC9"];
+  const tint = c => `color-mix(in srgb, ${c} 22%, #FFFFFF)`;
+  const cache = new Map(), wait = ms => new Promise(r => setTimeout(r, ms));
+  const st = { ds: "mmlu", m: "qwen3-4b-thinking", k: 4, i: 0 };
+  let started = false, pair = "", busy = Promise.resolve();
+  const btns = Array.from({ length: 10 }, (_, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = i + 1;
+    b.addEventListener("click", () => { st.i = i; queue(); }); pick.appendChild(b); return b;
+  });
+  const load = (ds, m) => {
+    const key = ds + "/" + m;
+    if (!cache.has(key)) cache.set(key, fetch(`data/traces/${key}.json`).then(r => (r.ok ? r.json() : null)).catch(() => null));
+    return cache.get(key);
+  };
+  function hash(str) { let h = 2166136261; for (const ch of str) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return h >>> 0; }
+  function colours(t, k) {
+    let x = hash(`${st.ds}|${st.m}|${k}|${t.seed}`);
+    const r = () => ((x = (Math.imul(x, 1664525) + 1013904223) >>> 0) / 4294967296);
+    const pal = PAL.slice();
+    for (let i = pal.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [pal[i], pal[j]] = [pal[j], pal[i]]; }
+    const c = {}; let n = 0;
+    for (let q = 1; q <= k; q++) {
+      const s = q === t.anchor ? RED[0] : !t.actual[q - 1] ? GREY[0] : pal[n++ % pal.length];
+      c[q] = [s, q === t.anchor ? RED[1] : !t.actual[q - 1] ? GREY[1] : tint(s)];
+    }
+    c[0] = c[-1] = GREY;
+    return c;
+  }
+  const tag = q => q > 0 ? "Q" + String(q).padStart(2, "0") : q === 0 ? "untagged" : "answer";
+  function build(t, k) {
+    const c = colours(t, k), max = Math.max(1, ...t.segs.map(s => s[1])), f = document.createDocumentFragment();
+    for (const [q, n, text] of t.segs) {
+      const row = document.createElement("div"); row.className = "tv-row" + (q === t.anchor ? " anchor" : "");
+      row.style.setProperty("--c", c[q][0]); row.style.setProperty("--b", c[q][1]);
+      const seg = document.createElement("div"); seg.className = "tv-seg";
+      // a tagged segment already opens with the model's own tag; only the untagged parts get a label
+      if (q <= 0) { const b = document.createElement("b"); b.textContent = tag(q); seg.append(b); }
+      seg.append(text);
+      const tok = document.createElement("div"); tok.className = "tv-tok";
+      const bar = document.createElement("i"); bar.style.width = (100 * n / max).toFixed(1) + "%";
+      const num = document.createElement("span"); num.textContent = n.toLocaleString("en-US");
+      tok.append(bar, num); row.append(seg, tok); f.appendChild(row);
+    }
+    const res = document.createElement("div"); res.className = "tv-res";
+    res.innerHTML = "<span>answers</span>";
+    for (let q = 1; q <= k; q++) {
+      const a = document.createElement("span"); a.className = "a" + (q === t.anchor ? " anchor" : "");
+      a.style.setProperty("--c", c[q][0]); a.style.setProperty("--b", c[q][1]);
+      const ok = t.correct[q - 1];
+      a.textContent = tag(q) + " " + (!t.actual[q - 1] ? "dummy" : ok === undefined ? "?" : ok ? "✓" : "✗");
+      if (t.actual[q - 1]) a.title = ok ? "correct" : "wrong";
+      res.appendChild(a);
+    }
+    const think = t.segs.filter(s => s[0] >= 0).reduce((a, s) => a + s[1], 0);
+    const scored = t.correct.filter((ok, j) => t.actual[j]), right = scored.filter(Boolean).length;
+    const sum = document.createElement("span"); sum.className = "sum";
+    sum.textContent = (t.correct.length === k ? `${right} of ${scored.length} tasks correct` : "answers could not be read")
+      + ` · ${think.toLocaleString("en-US")} thinking tokens`;
+    res.appendChild(sum); f.appendChild(res);
+    return f;
+  }
+  // thinking tokens per task, red task first; bars are reused so their heights glide between settings
+  const per = t => { const o = {}; for (const [q, n] of t.segs) if (q > 0) o[q] = (o[q] || 0) + n; return o; };
+  function chart(t, k, all) {
+    const c = colours(t, k), sums = per(t);
+    const order = [t.anchor, ...Array.from({ length: k }, (_, j) => j + 1).filter(q => q !== t.anchor)];
+    const mean = all.reduce((a, u) => a + (per(u)[u.anchor] || 0), 0) / all.length;
+    const top = Math.max(1, mean, ...order.map(q => sums[q] || 0)), H = 78;
+    while (bars.children.length > order.length) bars.lastChild.remove();
+    while (bars.children.length < order.length) {
+      const b = document.createElement("div"); b.className = "tv-bar";
+      b.innerHTML = '<div class="area"><div class="bcol" style="height:0"></div><span class="v" style="bottom:2px"></span></div><div class="q"></div>';
+      bars.appendChild(b);
+    }
+    order.forEach((q, j) => {
+      const b = bars.children[j], n = sums[q] || 0, h = H * n / top;
+      b.classList.toggle("red", j === 0);
+      b.style.setProperty("--c", c[q][0]);
+      b.title = `${tag(q)}${t.actual[q - 1] ? "" : " (dummy)"}: ${n.toLocaleString("en-US")} thinking tokens`;
+      b.querySelector(".q").textContent = String(q);
+      const v = b.querySelector(".v"); v.textContent = n.toLocaleString("en-US");
+      requestAnimationFrame(() => { b.querySelector(".bcol").style.height = h.toFixed(1) + "px"; v.style.bottom = (h + 2).toFixed(1) + "px"; });
+      let m = b.querySelector(".mean");
+      if (j === 0) {
+        if (!m) { m = document.createElement("i"); m.className = "mean"; m.style.bottom = "0px"; b.querySelector(".area").appendChild(m); }
+        requestAnimationFrame(() => { m.style.bottom = (H * mean / top).toFixed(1) + "px"; });
+      } else if (m) m.remove();
+    });
+    meanOut.textContent = Math.round(mean).toLocaleString("en-US");
+  }
+  // where the red task's first segment sits inside the frame, if it is in view
+  function redBox() {
+    const a = $(".tv-row.anchor .tv-seg", body); if (!a) return null;
+    const r = a.getBoundingClientRect(), v = body.getBoundingClientRect(), fr = frame.getBoundingClientRect();
+    if (r.bottom < v.top || r.top > v.bottom) return null;
+    return { left: r.left - fr.left, top: Math.max(r.top, v.top) - fr.top, width: r.width, height: Math.min(r.height, 60) };
+  }
+  function place(el, b) { Object.assign(el.style, { left: b.left + "px", top: b.top + "px", width: b.width + "px", height: b.height + "px" }); }
+  async function show(animate) {
+    const d = await load(st.ds, st.m);
+    if (!d) { body.replaceChildren(Object.assign(document.createElement("p"), { className: "tv-empty", textContent: "No traces for this pair yet." })); return; }
+    if (pair !== st.ds + "/" + st.m) {
+      pair = st.ds + "/" + st.m;
+      if (!d.ks.includes(st.k)) st.k = d.ks.reduce((a, b) => (Math.abs(b - st.k) < Math.abs(a - st.k) ? b : a));
+      selK.innerHTML = d.ks.map(k => `<option value="${k}"${k === st.k ? " selected" : ""}>${k}</option>`).join("");
+      selK.dispatchEvent(new Event("fit"));
+    }
+    btns.forEach((b, i) => b.classList.toggle("on", i === st.i));
+    const t = d.traces[st.k][st.i], move = animate && !REDUCE;
+    const from = move ? redBox() : null;
+    chart(t, st.k, d.traces[st.k]);
+    if (move) { body.classList.add("fade"); await wait(180); }
+    body.replaceChildren(build(t, st.k));
+    const a = $(".tv-row.anchor", body);
+    if (a && (a.offsetTop < body.scrollTop || a.offsetTop + 30 > body.scrollTop + body.clientHeight)) body.scrollTop = Math.max(0, a.offsetTop - 40);
+    body.classList.remove("fade");
+    const to = move ? redBox() : null;
+    if (from && to) {
+      ghost.style.transition = "none"; place(ghost, from); ghost.style.opacity = 1; ghost.getBoundingClientRect();
+      ghost.style.transition = "left .5s ease, top .5s ease, width .5s ease, height .5s ease, opacity .35s ease .45s";
+      place(ghost, to); ghost.style.opacity = 0;
+    }
+  }
+  const queue = () => { busy = busy.then(() => show(true)); };
+  document.querySelectorAll(".tv-mark").forEach(el => {
+    el.addEventListener("mouseenter", () => frame.classList.add("mark"));
+    el.addEventListener("mouseleave", () => frame.classList.remove("mark"));
+  });
+  fillSelect(selD, DATASETS, st.ds); fillSelect(selM, MODELS, st.m);
+  // the k list depends on the pair, so this select is sized on its own refills
+  const ctx = document.createElement("canvas").getContext("2d");
+  const fitK = () => { if (!selK.options.length) return; ctx.font = getComputedStyle(selK).font; selK.style.width = Math.ceil(ctx.measureText(selK.options[selK.selectedIndex].text).width + 6) + "px"; };
+  selK.addEventListener("fit", fitK); selK.addEventListener("change", fitK);
+  selD.addEventListener("change", () => { st.ds = selD.value; queue(); });
+  selM.addEventListener("change", () => { st.m = selM.value; queue(); });
+  selK.addEventListener("change", () => { st.k = +selK.value; queue(); });
+  open.addEventListener("click", () => {
+    const on = !wrap.classList.contains("open");
+    wrap.classList.toggle("open", on); open.setAttribute("aria-expanded", on);
+    if (on && !started) { started = true; busy = busy.then(() => show(false)); }
+  });
+})();
 
 // section rail
 const railNav = $(".rail"), rail = [...document.querySelectorAll(".rail a")], secs = rail.map(a => document.getElementById(a.dataset.s));
